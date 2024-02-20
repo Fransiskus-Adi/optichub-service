@@ -1,0 +1,3 @@
+// yarn install
+// yarn migration:run-local
+// yarn start:dev
