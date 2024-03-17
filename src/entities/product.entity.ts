@@ -1,7 +1,10 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Expose } from "class-transformer";
-import { Column, Entity, OneToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { BaseEntity } from "./base.entity";
+import { CategoryEntity } from "./category.entity";
+import { OrderEntity } from "./order.entity";
+import { OrderItemsEntity } from "./order-items.entity";
 
 @Entity('product')
 export class ProductEntity extends BaseEntity {
@@ -15,7 +18,7 @@ export class ProductEntity extends BaseEntity {
     @ApiProperty()
     name: string;
 
-    @Column({ type: 'float' })
+    @Column({ type: 'decimal', precision: 10, scale: 2 })
     @Expose()
     @ApiProperty()
     price: number;
@@ -25,14 +28,20 @@ export class ProductEntity extends BaseEntity {
     @ApiProperty()
     quantity: number;
 
-    // @OneToOne(
-    //     () => PromotionDiscountEntity,
-    //     (promotionDiscount) => promotionDiscount.id,
-    //     { cascade: ['update'] },
-    //   )
-    //   @JoinColumn()
-    //   @Expose()
-    //   @ApiProperty()
-    //   promotionDiscount: PromotionDiscountEntity;
+    @Column()
+    @Expose()
+    @ApiProperty()
+    image_url: string;
 
+    @ManyToOne(() => CategoryEntity)
+    @JoinColumn({ name: 'categoryId' })
+    @ApiProperty()
+    category: CategoryEntity;
+
+    @ManyToOne(() => OrderEntity, order => order.productsId)
+    order: OrderEntity;
+
+    @OneToOne(() => OrderItemsEntity, orderItem => orderItem.productId)
+    @JoinColumn()
+    orderItem: OrderEntity;
 }
