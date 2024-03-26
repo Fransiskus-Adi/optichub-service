@@ -61,7 +61,7 @@ export class PrescriptionEntity extends BaseEntity {
     @ApiProperty()
     left_pd: string;
 
-    @OneToOne(() => OrderEntity, order => order.prescriptionId)
+    @OneToOne(() => OrderEntity, order => order.prescription)
     @JoinColumn()
     order: OrderEntity;
 }

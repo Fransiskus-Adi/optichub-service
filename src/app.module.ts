@@ -6,9 +6,14 @@ import configuration from './config/configuration';
 import { APP_PIPE } from '@nestjs/core';
 import { ProductsModule } from './modules/products/products.module';
 import { ProductEntity } from './entities/product.entity';
-import { UserEntity } from './entities/user.entity';
-import { EmployeeModule } from './modules/employee/employee.module';
+import { UserModule } from './modules/user/user.module';
 import { CategoryModule } from './modules/category/category.module';
+import { UserEntity } from './entities/user.entity';
+import { OrderEntity } from './entities/order.entity';
+import { CategoryEntity } from './entities/category.entity';
+import { PrescriptionEntity } from './entities/prescription.entity';
+import { OrderItemsEntity } from './entities/order-items.entity';
+import { AuthModule } from './modules/auth/auth.module';
 
 export function moduleFactory({
   host, password, username, port
@@ -26,8 +31,13 @@ export function moduleFactory({
       entities: [
         ProductEntity,
         UserEntity,
+        OrderEntity,
+        CategoryEntity,
+        PrescriptionEntity,
+        OrderItemsEntity,
       ],
       synchronize: false,
+      softDelete: true,
       logging: Boolean(configService.get<string>('TYPEORM_LOGGING')),
       migrationTableName: configService.get<string>('TYPEORM_MIGRATION_TABLE_NAME')
     })
@@ -40,8 +50,9 @@ export function moduleFactory({
       }),
       TypeOrmModule.forRootAsync(dbConfig),
       ProductsModule,
-      EmployeeModule,
+      UserModule,
       CategoryModule,
+      AuthModule,
     ],
     controllers: [],
     providers: [{
