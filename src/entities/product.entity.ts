@@ -38,10 +38,10 @@ export class ProductEntity extends BaseEntity {
     @ApiProperty()
     category: CategoryEntity;
 
-    @ManyToOne(() => OrderEntity, order => order.productsId)
+    @ManyToOne(() => OrderEntity, order => order.products)
     order: OrderEntity;
 
-    @OneToOne(() => OrderItemsEntity, orderItem => orderItem.productId)
+    @OneToOne(() => OrderItemsEntity, orderItem => orderItem.product)
     @JoinColumn()
     orderItem: OrderEntity;
 }

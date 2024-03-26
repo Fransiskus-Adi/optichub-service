@@ -34,9 +34,9 @@ export class OrderItemsEntity extends BaseEntity {
 
     @ManyToOne(() => OrderEntity, orderEntity => orderEntity.orderItem)
     @JoinColumn({ name: 'orderId' })
-    orderId: OrderEntity;
+    order: OrderEntity;
 
     @OneToOne(() => ProductEntity, product => product.orderItem)
     @JoinColumn({ name: 'productId' })
-    productId: ProductEntity;
+    product: ProductEntity;
 }

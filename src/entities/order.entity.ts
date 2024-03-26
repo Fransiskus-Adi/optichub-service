@@ -7,7 +7,7 @@ import { ProductEntity } from "./product.entity";
 import { PrescriptionEntity } from "./prescription.entity";
 import { OrderItemsEntity } from "./order-items.entity";
 
-@Entity('order')
+@Entity('orders')
 export class OrderEntity extends BaseEntity {
     @Expose()
     @PrimaryGeneratedColumn('uuid')
@@ -51,15 +51,15 @@ export class OrderEntity extends BaseEntity {
 
     @ManyToOne(() => UserEntity, user => user.orders)
     @JoinColumn({ name: 'userId' })
-    userId: UserEntity;
+    user: UserEntity;
 
     @OneToMany(() => ProductEntity, product => product.order)
-    productsId: ProductEntity[];
+    products: ProductEntity[];
 
     @OneToOne(() => PrescriptionEntity, prescription => prescription.order)
     @JoinColumn({ name: 'prescriptionId' })
-    prescriptionId: PrescriptionEntity;
+    prescription: PrescriptionEntity;
 
-    @OneToMany(() => OrderItemsEntity, orderItem => orderItem.orderId)
+    @OneToMany(() => OrderItemsEntity, orderItem => orderItem.order)
     orderItem: OrderItemsEntity;
 }

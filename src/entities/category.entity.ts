@@ -17,7 +17,7 @@ export class CategoryEntity extends BaseEntity {
     @ApiProperty()
     name: string;
 
-    @OneToMany(() => ProductEntity, product => product.category)
-    @ApiProperty({ isArray: true })
-    products: ProductEntity[];
+    // @OneToMany(() => ProductEntity, product => product.category)
+    // @ApiProperty({ isArray: true })
+    // products: ProductEntity[];
 }

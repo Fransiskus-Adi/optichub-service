@@ -4,7 +4,7 @@ import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { BaseEntity } from "./base.entity";
 import { OrderEntity } from "./order.entity";
 
-@Entity('user')
+@Entity('users')
 export class UserEntity extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     @Expose()
@@ -41,6 +41,6 @@ export class UserEntity extends BaseEntity {
     @ApiProperty()
     role: string;
 
-    @OneToMany(() => OrderEntity, order => order.userId)
+    @OneToMany(() => OrderEntity, order => order.user)
     orders: OrderEntity[];
 }

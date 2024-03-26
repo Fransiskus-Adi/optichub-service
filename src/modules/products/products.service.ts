@@ -10,7 +10,6 @@ export class ProductsService {
         public readonly productRepository: Repository<ProductEntity>
     ) { }
 
-    @Get()
     async findAll(): Promise<any> {
         return this.productRepository.find();
     }
