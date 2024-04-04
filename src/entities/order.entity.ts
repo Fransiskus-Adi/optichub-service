@@ -34,6 +34,16 @@ export class OrderEntity extends BaseEntity {
     @ApiProperty()
     quantity: number;
 
+    @Expose()
+    @Column()
+    @ApiProperty()
+    isComplete: boolean;
+
+    @Column()
+    @Expose()
+    @ApiProperty()
+    payment_method: string;
+
     @Column({ type: 'decimal', precision: 10, scale: 2 })
     @Expose()
     @ApiProperty()
@@ -52,9 +62,6 @@ export class OrderEntity extends BaseEntity {
     @ManyToOne(() => UserEntity, user => user.orders)
     @JoinColumn({ name: 'userId' })
     user: UserEntity;
-
-    @OneToMany(() => ProductEntity, product => product.order)
-    products: ProductEntity[];
 
     @OneToOne(() => PrescriptionEntity, prescription => prescription.order)
     @JoinColumn({ name: 'prescriptionId' })

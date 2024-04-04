@@ -6,7 +6,7 @@ import { CategoryEntity } from "./category.entity";
 import { OrderEntity } from "./order.entity";
 import { OrderItemsEntity } from "./order-items.entity";
 
-@Entity('product')
+@Entity('products')
 export class ProductEntity extends BaseEntity {
     @Expose()
     @PrimaryGeneratedColumn('uuid')
@@ -18,12 +18,17 @@ export class ProductEntity extends BaseEntity {
     @ApiProperty()
     name: string;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column()
     @Expose()
     @ApiProperty()
     price: number;
 
-    @Column({ type: 'float' })
+    @Column({ default: true })
+    @Expose()
+    @ApiProperty()
+    status: boolean;
+
+    @Column()
     @Expose()
     @ApiProperty()
     quantity: number;
@@ -38,10 +43,7 @@ export class ProductEntity extends BaseEntity {
     @ApiProperty()
     category: CategoryEntity;
 
-    @ManyToOne(() => OrderEntity, order => order.products)
-    order: OrderEntity;
-
-    @OneToOne(() => OrderItemsEntity, orderItem => orderItem.product)
-    @JoinColumn()
-    orderItem: OrderEntity;
+    // @OneToOne(() => OrderItemsEntity, orderItem => orderItem.product)
+    // @JoinColumn()
+    // orderItem: OrderEntity;
 }

@@ -21,6 +21,11 @@ export class UserEntity extends BaseEntity {
     @ApiProperty()
     email: string;
 
+    @Column({ default: true })
+    @Expose()
+    @ApiProperty()
+    status: boolean;
+
     @Expose()
     @Column({ type: 'date' })
     @ApiProperty()
@@ -31,7 +36,6 @@ export class UserEntity extends BaseEntity {
     @ApiProperty()
     phone_number: string;
 
-    @Expose()
     @Column()
     @ApiProperty()
     password: string;

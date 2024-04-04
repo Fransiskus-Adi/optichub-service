@@ -7,7 +7,8 @@ export class products1710198174450 implements MigrationInterface {
             `CREATE TABLE products (
                 id varchar(36) PRIMARY KEY NOT NULL,
                 name varchar(50) NOT NULL,
-                price decimal(10, 2) NOT NULL,
+                price integer NOT NULL,
+                status boolean NOT NULL,
                 quantity integer NOT NULL,
                 image_url varchar(255) NOT NULL,
                 categoryId varchar(36),

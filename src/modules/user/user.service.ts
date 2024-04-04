@@ -16,6 +16,7 @@ export class UserService {
 
   async findAllUsers(): Promise<FindAllUserDto[]> {
     const users = await this.userRepository.find();
+    // Mapping findAllDto -> UserEntity
     const data = users.map(user => ({
       name: user.name,
       email: user.email,
@@ -37,10 +38,19 @@ export class UserService {
       dob,
       phone_number,
       password,
+      status,
       role
     } = createUserDto;
 
+    //Validate Existing Email
+    const validateEmailExist = await this.userRepository.findOne({ where: { email } })
+    if (validateEmailExist) {
+      throw new Error('Email already exist!');
+    }
+
+    // Parsed string to date
     const parsedDob = new Date(dob);
+    // Hash input password
     const hashedPass = await hash(password, 10)
 
     const newUser = this.userRepository.create({
@@ -49,6 +59,7 @@ export class UserService {
       dob: parsedDob,
       phone_number,
       password: hashedPass,
+      status,
       role
     })
 
@@ -65,6 +76,7 @@ export class UserService {
 
   async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<FindAllUserDto> {
     const userData = await this.userRepository.findOne(id);
+    // Validate if the id was exist
     if (!userData) {
       throw new NotFoundException('User was not found !');
     }

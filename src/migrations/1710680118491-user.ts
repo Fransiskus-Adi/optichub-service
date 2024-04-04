@@ -9,6 +9,7 @@ export class user1710678333669 implements MigrationInterface {
                 name varchar(255) NOT NULL,
                 email varchar(255) NOT NULL,
                 dob date,
+                status boolean NOT NULL,
                 phone_number varchar(18) NOT NULL,
                 password varchar(255) NOT NULL,
                 role varchar(16) NOT NULL,
