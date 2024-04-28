@@ -14,6 +14,7 @@ import { CategoryEntity } from './entities/category.entity';
 import { PrescriptionEntity } from './entities/prescription.entity';
 import { OrderItemsEntity } from './entities/order-items.entity';
 import { AuthModule } from './modules/auth/auth.module';
+import { OrderModule } from './modules/order/order.module';
 
 export function moduleFactory({
   host, password, username, port
@@ -52,6 +53,7 @@ export function moduleFactory({
       ProductsModule,
       UserModule,
       CategoryModule,
+      OrderModule,
       AuthModule,
     ],
     controllers: [],

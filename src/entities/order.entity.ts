@@ -17,56 +17,68 @@ export class OrderEntity extends BaseEntity {
     @Column()
     @Expose()
     @ApiProperty()
-    customer_name: string;
+    customerName: string;
 
     @Column()
     @Expose()
     @ApiProperty()
-    customer_phone: string;
+    customerPhone: string;
 
     @Column()
     @Expose()
     @ApiProperty()
-    customer_email: string;
+    customerEmail: string;
 
     @Column()
     @Expose()
     @ApiProperty()
-    quantity: number;
+    totalItem: number;
 
     @Expose()
-    @Column()
+    @Column({ default: false })
     @ApiProperty()
     isComplete: boolean;
 
+    @Expose()
     @Column()
-    @Expose()
     @ApiProperty()
-    payment_method: string;
-
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
-    @Expose()
-    @ApiProperty()
-    total_price: number;
+    withPrescription: boolean;
 
     @Column()
     @Expose()
     @ApiProperty()
-    status: boolean;
+    paymentMethod: string;
+
+    @Column()
+    @Expose()
+    @ApiProperty()
+    subTotal: number;
+
+    @Column()
+    @Expose()
+    @ApiProperty()
+    tax: number;
+
+    @Column()
+    @Expose()
+    @ApiProperty()
+    totalPrice: number;
 
     @Column({ type: 'date' })
     @Expose()
     @ApiProperty()
-    transaction_date: Date;
+    transactionDate: Date;
 
     @ManyToOne(() => UserEntity, user => user.orders)
     @JoinColumn({ name: 'userId' })
     user: UserEntity;
 
-    @OneToOne(() => PrescriptionEntity, prescription => prescription.order)
+    @OneToOne(() => PrescriptionEntity)
     @JoinColumn({ name: 'prescriptionId' })
     prescription: PrescriptionEntity;
 
-    @OneToMany(() => OrderItemsEntity, orderItem => orderItem.order)
-    orderItem: OrderItemsEntity;
+    @OneToMany(() => OrderItemsEntity, orderItem => orderItem.order, {
+        cascade: ["insert"]
+    })
+    orderItem: OrderItemsEntity[];
 }

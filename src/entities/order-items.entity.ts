@@ -5,7 +5,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { OrderEntity } from "./order.entity";
 import { ProductEntity } from "./product.entity";
 
-@Entity('order-items')
+@Entity('order_items')
 export class OrderItemsEntity extends BaseEntity {
     @Expose()
     @PrimaryGeneratedColumn('uuid')
@@ -15,22 +15,27 @@ export class OrderItemsEntity extends BaseEntity {
     @Column()
     @Expose()
     @ApiProperty()
-    quantity: number;
+    qty: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column()
     @Expose()
     @ApiProperty()
-    sub_total: number;
+    priceBeforeTax: number;
 
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
-    @Expose()
-    @ApiProperty()
-    total_price: number;
-
-    @Column({ type: 'decimal', precision: 10, scale: 2 })
+    @Column()
     @Expose()
     @ApiProperty()
     tax: number;
+
+    @Column()
+    @Expose()
+    @ApiProperty()
+    price: number;
+
+    @Column()
+    @Expose()
+    @ApiProperty()
+    totalPrice: number;
 
     @ManyToOne(() => OrderEntity, orderEntity => orderEntity.orderItem)
     @JoinColumn({ name: 'orderId' })

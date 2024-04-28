@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, NotFoundException, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, NotFoundException, Query, Res } from '@nestjs/common';
 import { CategoryService } from './category.service';
+import { Response } from 'express';
 import { CategoryEntity } from 'src/entities/category.entity';
 import { CreateCategoryDto } from './dto/request/createCategoryDto.dto';
 
@@ -8,21 +9,25 @@ export class CategoryController {
   constructor(private readonly categoryService: CategoryService) { }
 
   @Get('/')
-  async findAllCategory(): Promise<CategoryEntity[]> {
+  async findAllCategory(@Res() res: Response): Promise<CategoryEntity[]> {
     try {
       const categoryList = await this.categoryService.findAllCategory();
       if (!categoryList || categoryList.length === 0) {
-        throw new NotFoundException("Theres no data!");
+        res.status(404).json({ status: "error", message: "There's no data yet!" })
       }
-      return categoryList;
+      else {
+        res.status(200).json({ status: 'success', data: categoryList });
+        return categoryList;
+      }
     } catch (error) {
       console.error(error);
+      res.status(500).json({ status: 'error', message: 'Internal server error' });
       throw new error;
     }
   }
 
-  @Get('/search')
-  async findCategoryId(@Query('id') id?: string): Promise<CategoryEntity> {
+  @Get(':id')
+  async findCategoryId(@Param('id') id: string): Promise<CategoryEntity> {
     return this.categoryService.findCategoryById(id);
   }
 

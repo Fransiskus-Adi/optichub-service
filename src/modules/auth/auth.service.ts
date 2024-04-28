@@ -10,8 +10,8 @@ export class AuthService {
         private readonly jwtService: JwtService
     ) { }
 
-    async signIn(name: string, password: string): Promise<any> {
-        const user = await this.userService.findByName(name);
+    async signIn(email: string, password: string): Promise<any> {
+        const user = await this.userService.findByEmail(email);
         if (!user) {
             throw new NotFoundException('User Not Found!');
         }

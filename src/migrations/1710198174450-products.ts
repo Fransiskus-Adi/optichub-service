@@ -7,10 +7,12 @@ export class products1710198174450 implements MigrationInterface {
             `CREATE TABLE products (
                 id varchar(36) PRIMARY KEY NOT NULL,
                 name varchar(50) NOT NULL,
+                priceBeforeTax integer NOT NULL,
+                tax integer NOT NULL,
                 price integer NOT NULL,
                 status boolean NOT NULL,
                 quantity integer NOT NULL,
-                image_url varchar(255) NOT NULL,
+                imageUrl varchar(255) NOT NULL,
                 categoryId varchar(36),
                 CONSTRAINT fk_category FOREIGN KEY (categoryId) REFERENCES category(id),
                 createdAt datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),

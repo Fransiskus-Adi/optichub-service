@@ -4,7 +4,7 @@ import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from "ty
 import { BaseEntity } from "./base.entity";
 import { OrderEntity } from "./order.entity";
 
-@Entity('prescription')
+@Entity('prescriptions')
 export class PrescriptionEntity extends BaseEntity {
     @PrimaryGeneratedColumn('uuid')
     @Expose()
@@ -60,8 +60,4 @@ export class PrescriptionEntity extends BaseEntity {
     @Column()
     @ApiProperty()
     left_pd: string;
-
-    @OneToOne(() => OrderEntity, order => order.prescription)
-    @JoinColumn()
-    order: OrderEntity;
 }

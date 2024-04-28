@@ -3,26 +3,34 @@ import { ProductsService } from './products.service';
 import { ProductEntity } from 'src/entities/product.entity';
 import { CreateProductDto } from './dto/request/createProductDto.dto';
 import { UpdateProductDto } from './dto/request/updateProductDto.dto';
+import { ProductDataDto } from './dto/response/productDataDto.dto';
 
 @Controller('products')
 export class ProductsController {
     constructor(private readonly productsService: ProductsService) { }
 
     @Get('/')
-    async findAll(): Promise<ProductEntity[]> {
-        return this.productsService.findAll();
+    async getAllProduct(
+        @Query('page',) page: number = 1,
+        @Query('limit') limit: number = 10,
+        @Query('keyword') keyword?: string,
+        @Query('categoryId') categoryId?: string,
+        @Query('status') status?: boolean
+    ): Promise<{ data: ProductDataDto[], totalCount: number }> {
+        return this.productsService.getAllProduct(page, limit, keyword, categoryId, status);
     }
 
-    @Post('/add-product')
+    @Post('/')
     async addProduct(@Body() createProductDto: CreateProductDto) {
         const newProduct = await this.productsService.addProduct(createProductDto);
         console.log(newProduct);
         return { message: 'New product was added!', data: newProduct }
     }
 
-    @Get('/search')
-    async getProductById(@Query('id') id?: string): Promise<ProductEntity> {
-        return await this.productsService.getProductById(id);
+    @Get(':id')
+    async getProductById(@Param('id') id: string): Promise<{ data: ProductDataDto }> {
+        const productData = await this.productsService.getProductById(id);
+        return productData;
     }
 
     @Delete(':id')

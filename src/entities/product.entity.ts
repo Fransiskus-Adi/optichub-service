@@ -21,6 +21,16 @@ export class ProductEntity extends BaseEntity {
     @Column()
     @Expose()
     @ApiProperty()
+    priceBeforeTax: number;
+
+    @Column()
+    @Expose()
+    @ApiProperty()
+    tax: number;
+
+    @Column()
+    @Expose()
+    @ApiProperty()
     price: number;
 
     @Column({ default: true })
@@ -36,14 +46,10 @@ export class ProductEntity extends BaseEntity {
     @Column()
     @Expose()
     @ApiProperty()
-    image_url: string;
+    imageUrl: string;
 
     @ManyToOne(() => CategoryEntity)
     @JoinColumn({ name: 'categoryId' })
     @ApiProperty()
     category: CategoryEntity;
-
-    // @OneToOne(() => OrderItemsEntity, orderItem => orderItem.product)
-    // @JoinColumn()
-    // orderItem: OrderEntity;
 }

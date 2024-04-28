@@ -1,11 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from 'src/entities/user.entity';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { CreateUserDto } from './dto/request/createUserDto.dto';
 import { hash } from 'bcrypt'
-import { FindAllUserDto } from './dto/response/findAllUserDto.dto';
+import { UserDataDto } from './dto/response/UserDataDto.dto';
 import { UpdateUserDto } from './dto/request/updateUserDto.dto';
+// import { pagination } from '../pagination/pagination';
+import { plainToClass } from 'class-transformer';
 
 @Injectable()
 export class UserService {
@@ -14,21 +16,44 @@ export class UserService {
     private readonly userRepository: Repository<UserEntity>
   ) { }
 
-  async findAllUsers(): Promise<FindAllUserDto[]> {
-    const users = await this.userRepository.find();
-    // Mapping findAllDto -> UserEntity
-    const data = users.map(user => ({
-      name: user.name,
-      email: user.email,
-      dob: user.dob,
-      phone_number: user.phone_number,
-      role: user.role
-    }))
-    return data;
+  async findAllUser(
+    page: number = 1,
+    limit: number = 10,
+    keyword?: string,
+    role?: string,
+    status?: boolean,
+  ): Promise<{ data: UserDataDto[], totalCount: number }> {
+    let whereCounditions: any = {};
+
+    if (keyword) {
+      whereCounditions.name = Like(`%${keyword}%`)
+    }
+
+    if (role) {
+      whereCounditions.role = Like(`%${role}%`)
+    }
+
+    if (status != undefined) {
+      whereCounditions.status = status;
+    }
+
+    const [data, totalCount] = await this.userRepository.findAndCount({
+      where: whereCounditions,
+      take: limit,
+      skip: (page - 1) * limit
+    })
+
+    const userData = data.map(user => plainToClass(UserDataDto, user));
+
+    return { data: userData, totalCount }
   }
 
-  async findByName(name: string): Promise<UserEntity> {
-    return await this.userRepository.findOne({ where: { name } });
+  async findByEmail(email: string): Promise<UserEntity> {
+    return await this.userRepository.findOne({ where: { email } });
+  }
+
+  async getUserById(id: string): Promise<UserEntity> {
+    return await this.userRepository.findOne(id);
   }
 
   async addUser(createUserDto: CreateUserDto): Promise<UserEntity> {
@@ -46,6 +71,12 @@ export class UserService {
     const validateEmailExist = await this.userRepository.findOne({ where: { email } })
     if (validateEmailExist) {
       throw new Error('Email already exist!');
+    }
+
+    //Validate Existing Phone_Number
+    const validatePhoneNumber = await this.userRepository.findOne({ where: { phone_number } })
+    if (validatePhoneNumber) {
+      throw new Error('Phone number already exist!');
     }
 
     // Parsed string to date
@@ -74,21 +105,37 @@ export class UserService {
     }
   }
 
-  async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<FindAllUserDto> {
+  async updateUser(id: string, updateUserDto: UpdateUserDto): Promise<UserDataDto> {
     const userData = await this.userRepository.findOne(id);
     // Validate if the id was exist
     if (!userData) {
       throw new NotFoundException('User was not found !');
     }
-    if (updateUserDto.email) {
+
+    const validateName = await this.userRepository.findOne({ where: { email: updateUserDto.name } });
+    if (validateName) {
+      throw new Error('Name already exist!');
+    }
+    userData.name = updateUserDto.name;
+
+    const validateEmail = await this.userRepository.findOne({ where: { email: updateUserDto.email } });
+    if (!validateEmail) {
       userData.email = updateUserDto.email;
     }
+    userData.email = updateUserDto.email;
+
+    const validatePhoneNumber = await this.userRepository.findOne({ where: { phone_number: updateUserDto.phone_number } });
+    if (!validatePhoneNumber) {
+      userData.phone_number = updateUserDto.phone_number;
+    }
+
+    const parsedDob = new Date(updateUserDto.dob);
+    userData.dob = parsedDob;
+
     if (updateUserDto.password) {
       userData.password = await hash(updateUserDto.password, 10);
     }
-    if (updateUserDto.phone_number) {
-      userData.phone_number = updateUserDto.phone_number;
-    }
+    userData.status = updateUserDto.status;
 
     return await this.userRepository.save(userData);
   }

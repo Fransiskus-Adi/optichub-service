@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, HttpException, HttpStatus, Query, Delete, 
 import { UserService } from './user.service';
 import { UserEntity } from 'src/entities/user.entity';
 import { CreateUserDto } from './dto/request/createUserDto.dto';
-import { FindAllUserDto } from './dto/response/findAllUserDto.dto';
+import { UserDataDto } from './dto/response/UserDataDto.dto';
 import { UpdateUserDto } from './dto/request/updateUserDto.dto';
 
 @Controller('user')
@@ -10,27 +10,34 @@ export class UserController {
   constructor(private readonly userService: UserService) { }
 
   @Get('/')
-  async findAllUser(): Promise<FindAllUserDto[]> {
+  async findAllUser(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+    @Query('keyword') keyword?: string,
+    @Query('role') role?: string,
+    @Query('status') status?: boolean
+  ): Promise<{ data: UserDataDto[], totalCount: number }> {
     try {
-      const users = await this.userService.findAllUsers();
-      if (!users || users.length === 0) {
-        throw new HttpException('No User Found!', HttpStatus.NOT_FOUND)
-      }
-      return users;
+      return await this.userService.findAllUser(page, limit, keyword, role, status)
     } catch (error) {
       console.log(error)
       throw new HttpException('Internal Server Error', HttpStatus.INTERNAL_SERVER_ERROR)
     }
   }
 
-  @Post('/add-user')
+  @Post('/')
   async addUser(@Body() createUserDto: CreateUserDto) {
     return await this.userService.addUser(createUserDto);
   }
 
+  @Get('/:id')
+  async getUserById(@Param() id?: string): Promise<UserEntity> {
+    return await this.userService.getUserById(id);
+  }
+
   @Get('/search')
-  async findByUsername(@Query('name') name?: string): Promise<UserEntity> {
-    return await this.userService.findByName(name);
+  async findByEmail(@Query('email') email?: string): Promise<UserEntity> {
+    return await this.userService.findByEmail(email);
   }
 
   @Delete(':id')
@@ -39,7 +46,7 @@ export class UserController {
   }
 
   @Patch(':id')
-  async updateUser(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto): Promise<FindAllUserDto> {
+  async updateUser(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto): Promise<UserDataDto> {
     return await this.userService.updateUser(id, updateUserDto);
   }
 }

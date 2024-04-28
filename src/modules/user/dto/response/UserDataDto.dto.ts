@@ -1,6 +1,9 @@
 import { IsDate, IsString } from "class-validator";
 
-export class FindAllUserDto {
+export class UserDataDto {
+    @IsString()
+    id: string;
+
     @IsString()
     name: string;
 

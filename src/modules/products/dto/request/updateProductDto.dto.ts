@@ -19,9 +19,9 @@ export class UpdateProductDto {
 
     @IsString()
     @IsOptional()
-    image_url: string;
+    imageUrl: string;
 
-    // @IsString()
-    // @IsOptional()
-    // categoryId: string;
+    @IsString()
+    @IsOptional()
+    categoryId: string;
 }

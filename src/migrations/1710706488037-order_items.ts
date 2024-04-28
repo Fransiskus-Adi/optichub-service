@@ -6,10 +6,11 @@ export class orderItems1710706488037 implements MigrationInterface {
         await queryRunner.query(
             `CREATE TABLE order_items(
                 id varchar(36) PRIMARY KEY NOT NULL,
-                quantity integer NOT NULL,
-                total_price decimal(10,2) NOT NULL,
-                sub_total decimal(10,2) NOT NULL,
-                tax decimal(10,2) NOT NULL,
+                qty integer NOT NULL,
+                totalPrice integer NOT NULL,
+                priceBeforeTax integer NOT NULL,
+                tax integer NOT NULL,
+                price integer NOT NULL,
                 orderId varchar(36),
                 CONSTRAINT fk_order FOREIGN KEY (orderId) REFERENCES orders(id),
                 productId varchar(36),
