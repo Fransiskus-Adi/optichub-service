@@ -16,7 +16,7 @@ export class CategoryController {
         res.status(404).json({ status: "error", message: "There's no data yet!" })
       }
       else {
-        res.status(200).json({ status: 'success', data: categoryList });
+        res.status(200).json({ status: 'success', statusCode: 200, data: categoryList });
         return categoryList;
       }
     } catch (error) {

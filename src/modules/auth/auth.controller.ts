@@ -9,7 +9,7 @@ export class AuthController {
     @HttpCode(HttpStatus.OK)
     @Post('/login')
     async signIn(@Body() signInDto: Record<string, any>) {
-        return this.authService.signIn(signInDto.name, signInDto.password)
+        return this.authService.signIn(signInDto.email, signInDto.password)
     }
 
     @UseGuards(AuthGuard)

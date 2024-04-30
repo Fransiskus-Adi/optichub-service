@@ -16,7 +16,12 @@ export class ProductsController {
         @Query('keyword') keyword?: string,
         @Query('categoryId') categoryId?: string,
         @Query('status') status?: boolean
-    ): Promise<{ data: ProductDataDto[], totalCount: number }> {
+    ): Promise<{
+        data: ProductDataDto[],
+        metadata: {
+            totalCount: number, currentPage: number, totalPages: number
+        }
+    }> {
         return this.productsService.getAllProduct(page, limit, keyword, categoryId, status);
     }
 

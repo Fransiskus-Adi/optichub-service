@@ -15,7 +15,12 @@ export class OrderController {
         @Query('limit') limit: number = 10,
         @Query('userName') userName?: string,
         @Query('customerName') customerName?: string
-    ): Promise<{ data: OrderDataDto[], totalCount: number }> {
+    ): Promise<{
+        data: OrderDataDto[],
+        metadata: {
+            totalCount: number, currentPage: number, totalPages: number
+        }
+    }> {
         return await this.orderService.getAllTransaction(page, limit, userName, customerName);
     }
 

@@ -21,7 +21,12 @@ export class ProductsService {
         keyword?: string,
         categoryId?: string,
         status?: boolean,
-    ): Promise<{ data: ProductDataDto[], totalCount: number }> {
+    ): Promise<{
+        data: ProductDataDto[],
+        metadata: {
+            totalCount: number, currentPage: number, totalPages: number
+        }
+    }> {
         let whereConditions: any = {}
 
         //validate if keyword was provided
@@ -47,13 +52,19 @@ export class ProductsService {
             skip: (page - 1) * limit
         })
 
+        const totalPages = Math.ceil(totalCount / limit)
         const transformedData = data.map(product => {
             const productDto = plainToClass(ProductDataDto, product);
             productDto.categoryId = product.category.id;
             return productDto;
         })
 
-        return { data: transformedData, totalCount }
+        return {
+            data: transformedData,
+            metadata: {
+                totalCount, currentPage: page, totalPages
+            }
+        }
     }
 
     async addProduct(createProductDto: CreateProductDto): Promise<ProductEntity> {

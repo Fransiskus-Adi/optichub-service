@@ -4,13 +4,15 @@ import { OrderEntity } from 'src/entities/order.entity';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
 import { PrescriptionEntity } from 'src/entities/prescription.entity';
+import { ProductEntity } from 'src/entities/product.entity';
 
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([
             OrderEntity,
-            PrescriptionEntity
+            PrescriptionEntity,
+            ProductEntity
         ])
     ],
     controllers: [OrderController],

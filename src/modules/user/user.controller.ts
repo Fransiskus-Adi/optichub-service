@@ -16,9 +16,22 @@ export class UserController {
     @Query('keyword') keyword?: string,
     @Query('role') role?: string,
     @Query('status') status?: boolean
-  ): Promise<{ data: UserDataDto[], totalCount: number }> {
+  ): Promise<{
+    data: UserDataDto[],
+    metadata: {
+      totalCount: number, currentPage: number, totalPages: number
+    };
+  }> {
     try {
-      return await this.userService.findAllUser(page, limit, keyword, role, status)
+      const response = await this.userService.findAllUser(page, limit, keyword, role, status)
+      return {
+        data: response.data,
+        metadata: {
+          totalCount: response.metadata.totalCount,
+          currentPage: response.metadata.currentPage,
+          totalPages: response.metadata.totalPages,
+        }
+      }
     } catch (error) {
       console.log(error)
       throw new HttpException('Internal Server Error', HttpStatus.INTERNAL_SERVER_ERROR)

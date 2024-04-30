@@ -16,12 +16,13 @@ export class AuthService {
             throw new NotFoundException('User Not Found!');
         }
 
+        //validate the input password was same with password on db using compare
         const validatePass = await compare(password, user.password)
         if (!validatePass) {
             throw new UnauthorizedException("Wrong Password!");
         }
 
-        const payload = { sub: user.id, name: user.name }
+        const payload = { sub: user.id, name: user.email }
         return {
             data: {
                 id: user.id,

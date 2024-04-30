@@ -9,7 +9,6 @@ import { ProductEntity } from "src/entities/product.entity";
 import { UserEntity } from "src/entities/user.entity";
 
 import { OrderDataDto, PrescriptionData, ProductMeta } from "./dto/response/orderDataDto.dto";
-import { PaginationDto } from "../pagination/pagination";
 
 @Injectable()
 export class OrderService {
@@ -17,7 +16,9 @@ export class OrderService {
         @InjectRepository(OrderEntity)
         public readonly orderRepository: Repository<OrderEntity>,
         @InjectRepository(PrescriptionEntity)
-        public readonly prescriptionRepository: Repository<PrescriptionEntity>
+        public readonly prescriptionRepository: Repository<PrescriptionEntity>,
+        @InjectRepository(ProductEntity)
+        public readonly productRepository: Repository<ProductEntity>
     ) { }
 
     async getAllTransaction(
@@ -25,7 +26,12 @@ export class OrderService {
         limit: number = 10,
         userName?: string,
         customerName?: string,
-    ): Promise<{ data: OrderDataDto[], totalCount: number }> {
+    ): Promise<{
+        data: OrderDataDto[],
+        metadata: {
+            totalCount: number, currentPage: number, totalPages: number
+        }
+    }> {
 
         let whereConditions: any = {};
 
@@ -97,7 +103,13 @@ export class OrderService {
 
             return transactionDto;
         })
-        return { data: transactionDataDto, totalCount };
+        const totalPages = Math.ceil(totalCount / limit)
+        return {
+            data: transactionDataDto,
+            metadata: {
+                totalCount, currentPage: page, totalPages
+            }
+        };
     }
 
     async addTransaction(addTransactionDto: AddTransactionDto): Promise<OrderEntity> {
@@ -137,7 +149,7 @@ export class OrderService {
             }
             const responsePrescription = await this.prescriptionRepository.save(prescription);
 
-            orderData.orderItem = addTransactionDto.orderItem.map(item => {
+            orderData.orderItem = await Promise.all(addTransactionDto.orderItem.map(async item => {
                 const orderItemData = new OrderItemsEntity();
                 orderItemData.product = new ProductEntity();
                 orderItemData.product.id = item.id;
@@ -147,8 +159,19 @@ export class OrderService {
                 orderItemData.price = item.price;
 
                 orderItemData.totalPrice = item.quantity * item.price;
+
+                // method to decrease product quantity when new order was created
+                const productData = await this.productRepository.findOne(item.id);
+                if (!productData) {
+                    throw new Error('Product not found');
+                }
+
+                productData.quantity -= orderItemData.qty;
+
+                await this.productRepository.save(productData);
+
                 return orderItemData;
-            })
+            }))
             orderData.prescription = responsePrescription;
             orderData.totalItem = orderData.orderItem.reduce((total, item) => total + item.qty, 0);
             orderData.subTotal = orderData.orderItem.reduce((total, item) => total + (item.qty * item.priceBeforeTax), 0);

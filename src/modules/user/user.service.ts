@@ -22,7 +22,12 @@ export class UserService {
     keyword?: string,
     role?: string,
     status?: boolean,
-  ): Promise<{ data: UserDataDto[], totalCount: number }> {
+  ): Promise<{
+    data: UserDataDto[],
+    metadata: {
+      totalCount: number, currentPage: number, totalPages: number
+    };
+  }> {
     let whereCounditions: any = {};
 
     if (keyword) {
@@ -43,9 +48,17 @@ export class UserService {
       skip: (page - 1) * limit
     })
 
+    const totalPages = Math.ceil(totalCount / limit);
     const userData = data.map(user => plainToClass(UserDataDto, user));
 
-    return { data: userData, totalCount }
+    return {
+      data: userData,
+      metadata: {
+        totalCount,
+        currentPage: page,
+        totalPages,
+      }
+    }
   }
 
   async findByEmail(email: string): Promise<UserEntity> {
