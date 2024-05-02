@@ -7,7 +7,6 @@ export class orderItems1710706488037 implements MigrationInterface {
             `CREATE TABLE order_items(
                 id varchar(36) PRIMARY KEY NOT NULL,
                 qty integer NOT NULL,
-                totalPrice integer NOT NULL,
                 priceBeforeTax integer NOT NULL,
                 tax integer NOT NULL,
                 price integer NOT NULL,

@@ -11,6 +11,21 @@ export class PrescriptionEntity extends BaseEntity {
     @ApiProperty()
     id: string;
 
+    @Column()
+    @Expose()
+    @ApiProperty()
+    customerName: string;
+
+    @Column()
+    @Expose()
+    @ApiProperty()
+    customerPhone: string;
+
+    @Column()
+    @Expose()
+    @ApiProperty()
+    customerEmail: string;
+
     @Expose()
     @Column()
     @ApiProperty()

@@ -6,9 +6,6 @@ export class orders1710701836633 implements MigrationInterface {
         await queryRunner.query(
             `CREATE TABLE orders(
                 id varchar(36) PRIMARY KEY NOT NULL,
-                customerName varchar(255) NOT NULL,
-                customerPhone varchar(18),
-                customerEmail varchar(255),
                 totalItem integer NOT NULL,
                 paymentMethod varchar(255) NOT NULL,
                 subTotal integer NOT NULL,

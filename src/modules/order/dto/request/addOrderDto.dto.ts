@@ -20,6 +20,15 @@ export class ProductMeta {
 
 export class PrescriptionData {
     @IsString()
+    customerName: string;
+
+    @IsString()
+    customerPhone: string;
+
+    @IsString()
+    customerEmail: string;
+
+    @IsString()
     right_sph: string;
 
     @IsString()
@@ -50,18 +59,9 @@ export class PrescriptionData {
     left_pd: string;
 }
 
-export class AddTransactionDto {
+export class AddOrderDto {
     @IsString()
     userId: string;
-
-    @IsString()
-    customerName: string;
-
-    @IsString()
-    customerPhone: string;
-
-    @IsString()
-    customerEmail: string;
 
     @IsString()
     paymentMethod: string;

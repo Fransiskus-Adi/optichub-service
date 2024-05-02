@@ -6,6 +6,9 @@ export class prescription1710679712363 implements MigrationInterface {
         await queryRunner.query(
             `CREATE TABLE prescriptions (
                 id varchar(36) PRIMARY KEY NOT NULL,
+                customerName varchar(255) NOT NULL,
+                customerPhone varchar(18) NULL,
+                customerEmail varchar(255) NULL,
                 right_sph varchar(10),
                 right_cylinder varchar(10),
                 right_axis varchar(10),

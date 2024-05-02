@@ -91,7 +91,7 @@ export class ProductsService {
             console.log(newProduct);
             return await this.productRepository.save(newProduct);
         } catch (error) {
-            throw new Error;
+            throw new Error("Failed to add new product");
         }
     }
 

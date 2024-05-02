@@ -20,10 +20,6 @@ export class CategoryService {
   }
 
   async addCategory(createCategoryDto: CreateCategoryDto): Promise<CategoryEntity> {
-    // const validateCategoryExist = await this.categoryRepository.findOne({ where: createCategoryDto.name })
-    // if (validateCategoryExist) {
-    //   throw new Error('Category was already exist');
-    // }
     const newCategory = this.categoryRepository.create(createCategoryDto);
     return await this.categoryRepository.save(newCategory);
   }

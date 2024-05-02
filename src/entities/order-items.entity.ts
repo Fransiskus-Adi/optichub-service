@@ -32,11 +32,6 @@ export class OrderItemsEntity extends BaseEntity {
     @ApiProperty()
     price: number;
 
-    @Column()
-    @Expose()
-    @ApiProperty()
-    totalPrice: number;
-
     @ManyToOne(() => OrderEntity, orderEntity => orderEntity.orderItem)
     @JoinColumn({ name: 'orderId' })
     order: OrderEntity;

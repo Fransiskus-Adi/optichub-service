@@ -18,9 +18,6 @@ export class ProductMeta {
     price: number;
 
     @IsNumber()
-    totalPrice: number;
-
-    @IsNumber()
     qty: number;
 
     @IsString()
@@ -28,6 +25,15 @@ export class ProductMeta {
 }
 
 export class PrescriptionData {
+    @IsString()
+    customerName: string;
+
+    @IsString()
+    customerPhone: string;
+
+    @IsString()
+    customerEmail: string;
+
     @IsString()
     right_sph: string;
 
@@ -68,15 +74,6 @@ export class OrderDataDto {
 
     @IsString()
     userName: string;
-
-    @IsString()
-    customerName: string;
-
-    @IsString()
-    customerPhone: string;
-
-    @IsString()
-    customerEmail: string;
 
     @IsString()
     paymentMethod: string;

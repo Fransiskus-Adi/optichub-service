@@ -17,21 +17,6 @@ export class OrderEntity extends BaseEntity {
     @Column()
     @Expose()
     @ApiProperty()
-    customerName: string;
-
-    @Column()
-    @Expose()
-    @ApiProperty()
-    customerPhone: string;
-
-    @Column()
-    @Expose()
-    @ApiProperty()
-    customerEmail: string;
-
-    @Column()
-    @Expose()
-    @ApiProperty()
     totalItem: number;
 
     @Expose()
