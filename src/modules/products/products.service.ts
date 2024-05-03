@@ -7,6 +7,7 @@ import { CategoryEntity } from 'src/entities/category.entity';
 import { UpdateProductDto } from './dto/request/updateProductDto.dto';
 import { ProductDataDto } from './dto/response/productDataDto.dto';
 import { plainToClass } from 'class-transformer';
+import path from 'path';
 
 @Injectable()
 export class ProductsService {
@@ -67,7 +68,7 @@ export class ProductsService {
         }
     }
 
-    async addProduct(createProductDto: CreateProductDto): Promise<ProductEntity> {
+    async addProduct(createProductDto: CreateProductDto, file: Express.Multer.File): Promise<ProductEntity> {
         const validateProductExist = await this.productRepository.findOne({
             where: {
                 name: createProductDto.name,
@@ -84,10 +85,10 @@ export class ProductsService {
             newProduct.price = createProductDto.price;
             newProduct.status = createProductDto.status;
             newProduct.quantity = createProductDto.quantity;
-            newProduct.imageUrl = createProductDto.image_url;
             newProduct.category = new CategoryEntity();
             newProduct.category.id = createProductDto.categoryId;
 
+            newProduct.imageUrl = path.join('uploads', file.filename)
             console.log(newProduct);
             return await this.productRepository.save(newProduct);
         } catch (error) {

@@ -11,8 +11,27 @@ export class CategoryService {
     private readonly categoryRepository: Repository<CategoryEntity>
   ) { }
 
-  async findAllCategory(): Promise<CategoryEntity[]> {
-    return await this.categoryRepository.find();
+  async findAllCategory(
+    page: number = 1,
+    limit: number = 10
+  ): Promise<{
+    data: CategoryEntity[],
+    metadata: {
+      totalCount: number, currentPage: number, totalPages: number
+    }
+  }> {
+    const [data, totalCount] = await this.categoryRepository.findAndCount({
+      take: limit,
+      skip: (page - 1) * limit
+    })
+
+    const totalPages = Math.ceil(totalCount / limit)
+    return {
+      data: data,
+      metadata: {
+        totalCount, currentPage: page, totalPages
+      }
+    }
   }
 
   async findCategoryById(id: string): Promise<CategoryEntity> {

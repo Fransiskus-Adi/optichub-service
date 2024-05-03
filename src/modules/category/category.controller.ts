@@ -1,6 +1,5 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, NotFoundException, Query, Res } from '@nestjs/common';
 import { CategoryService } from './category.service';
-import { Response } from 'express';
 import { CategoryEntity } from 'src/entities/category.entity';
 import { CreateCategoryDto } from './dto/request/createCategoryDto.dto';
 
@@ -9,19 +8,19 @@ export class CategoryController {
   constructor(private readonly categoryService: CategoryService) { }
 
   @Get('/')
-  async findAllCategory(@Res() res: Response): Promise<CategoryEntity[]> {
+  async findAllCategory(
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ): Promise<{
+    data: CategoryEntity[],
+    metadata: {
+      totalCount: number, currentPage: number, totalPages: number
+    }
+  }> {
     try {
-      const categoryList = await this.categoryService.findAllCategory();
-      if (!categoryList || categoryList.length === 0) {
-        res.status(404).json({ status: "error", message: "There's no data yet!" })
-      }
-      else {
-        res.status(200).json({ status: 'success', statusCode: 200, data: categoryList });
-        return categoryList;
-      }
+      return this.categoryService.findAllCategory(page, limit)
     } catch (error) {
       console.error(error);
-      res.status(500).json({ status: 'error', message: 'Internal server error' });
       throw new error;
     }
   }

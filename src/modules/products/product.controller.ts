@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UploadedFile } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { ProductEntity } from 'src/entities/product.entity';
 import { CreateProductDto } from './dto/request/createProductDto.dto';
@@ -11,7 +11,7 @@ export class ProductsController {
 
     @Get('/')
     async getAllProduct(
-        @Query('page',) page: number = 1,
+        @Query('page') page: number = 1,
         @Query('limit') limit: number = 10,
         @Query('keyword') keyword?: string,
         @Query('categoryId') categoryId?: string,
@@ -26,8 +26,8 @@ export class ProductsController {
     }
 
     @Post('/')
-    async addProduct(@Body() createProductDto: CreateProductDto) {
-        const newProduct = await this.productsService.addProduct(createProductDto);
+    async addProduct(@Body() createProductDto: CreateProductDto, @UploadedFile() file: Express.Multer.File) {
+        const newProduct = await this.productsService.addProduct(createProductDto, file);
         console.log(newProduct);
         return { message: 'New product was added!', data: newProduct }
     }
