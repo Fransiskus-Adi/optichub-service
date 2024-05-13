@@ -4,6 +4,7 @@ import { UserEntity } from 'src/entities/user.entity';
 import { CreateUserDto } from './dto/request/createUserDto.dto';
 import { UserDataDto } from './dto/response/UserDataDto.dto';
 import { UpdateUserDto } from './dto/request/updateUserDto.dto';
+import { UserStatus } from 'src/enums/user-status.enum';
 
 @Controller('user')
 export class UserController {
@@ -15,7 +16,7 @@ export class UserController {
     @Query('limit') limit: number = 10,
     @Query('keyword') keyword?: string,
     @Query('role') role?: string,
-    @Query('status') status?: boolean
+    @Query('status') status?: UserStatus | ''
   ): Promise<{
     data: UserDataDto[],
     metadata: {

@@ -5,6 +5,7 @@ import { BaseEntity } from "./base.entity";
 import { CategoryEntity } from "./category.entity";
 import { OrderEntity } from "./order.entity";
 import { OrderItemsEntity } from "./order-items.entity";
+import { ProductStatus } from "src/enums/product-status.enum";
 
 @Entity('products')
 export class ProductEntity extends BaseEntity {
@@ -33,10 +34,10 @@ export class ProductEntity extends BaseEntity {
     @ApiProperty()
     price: number;
 
-    @Column({ default: true })
+    @Column({ type: 'enum', enum: ProductStatus, default: ProductStatus.ACTIVE })
     @Expose()
     @ApiProperty()
-    status: boolean;
+    status: ProductStatus;
 
     @Column()
     @Expose()

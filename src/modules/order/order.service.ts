@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { OrderEntity } from "src/entities/order.entity";
-import { Like, Raw, Repository, UpdateResult } from "typeorm";
+import { Between, LessThanOrEqual, Like, MoreThanOrEqual, Raw, Repository, UpdateResult } from "typeorm";
 import { AddOrderDto } from "./dto/request/addOrderDto.dto";
 import { PrescriptionEntity } from "src/entities/prescription.entity";
 import { OrderItemsEntity } from "src/entities/order-items.entity";
@@ -10,16 +10,22 @@ import { UserEntity } from "src/entities/user.entity";
 
 import { OrderDataDto, PrescriptionData, ProductMeta } from "./dto/response/orderDataDto.dto";
 import { UpdateOrderDto } from "./dto/request/updateOrderDto.dto";
+import { CategoryEntity } from "src/entities/category.entity";
+import { OrderStatus } from "src/enums/order-status.enum";
+import { ProductStatus } from "src/enums/product-status.enum";
+import moment from "moment";
 
 @Injectable()
 export class OrderService {
     constructor(
         @InjectRepository(OrderEntity)
         public readonly orderRepository: Repository<OrderEntity>,
+        @InjectRepository(OrderItemsEntity)
+        public readonly orderItemsRepository: Repository<OrderItemsEntity>,
         @InjectRepository(PrescriptionEntity)
         public readonly prescriptionRepository: Repository<PrescriptionEntity>,
         @InjectRepository(ProductEntity)
-        public readonly productRepository: Repository<ProductEntity>
+        public readonly productRepository: Repository<ProductEntity>,
     ) { }
 
     async getAllOrder(
@@ -27,6 +33,9 @@ export class OrderService {
         limit: number = 10,
         userName?: string,
         customerName?: string,
+        status?: string | '',
+        startDate?: Date,
+        endDate?: Date,
     ): Promise<{
         data: OrderDataDto[],
         metadata: {
@@ -44,12 +53,26 @@ export class OrderService {
         if (customerName) {
             whereConditions.customerName = Like(`%${customerName}%`)
         }
-
         // tambahin filter status order and filter start date & end date
+
+        if (status !== undefined && status !== '') {
+            whereConditions.status = status;
+        }
+
+        if (startDate && endDate) {
+            // if both provided, filter between those date
+            whereConditions.transactionDate = Between(startDate, endDate);
+        } else if (startDate) {
+            // if only startDate provided, will filter from startDate
+            whereConditions.transactionDate = MoreThanOrEqual(startDate);
+        } else if (endDate) {
+            // if only endDate provided, will filter until endDate
+            whereConditions.transactionDate = LessThanOrEqual(endDate);
+        }
 
         const [allTransaction, totalCount] = await this.orderRepository.findAndCount({
             where: whereConditions,
-            relations: ['prescription', 'orderItem', 'orderItem.product', 'user'],
+            relations: ['prescription', 'orderItem', 'orderItem.product', 'orderItem.product.category', 'user'],
             take: limit,
             skip: (page - 1) * limit,
         });
@@ -62,8 +85,8 @@ export class OrderService {
             transactionDto.userId = transaction.user.id;
             transactionDto.userName = transaction.user.name;
             transactionDto.paymentMethod = transaction.paymentMethod;
-            transactionDto.isComplete = transaction.isComplete;
-
+            transactionDto.status = transaction.status;
+            transactionDto.withPrescription = transaction.withPrescription;
             // mapping prescription data
             if (transaction.prescription) {
                 const prescriptionData = new PrescriptionData();
@@ -94,6 +117,7 @@ export class OrderService {
                     productMeta.price = item.price;
                     productMeta.qty = item.qty;
                     productMeta.imageUrl = item.product.imageUrl;
+                    productMeta.categoryName = item.product.category.name;
                     return productMeta;
                 })
             }
@@ -118,7 +142,7 @@ export class OrderService {
             orderData.user = new UserEntity();
             orderData.user.id = addOrderDto.userId;
             orderData.paymentMethod = addOrderDto.paymentMethod;
-            orderData.isComplete = addOrderDto.isComplete;
+            orderData.status = addOrderDto.status;
             orderData.withPrescription = addOrderDto.withPrescription;
             const prescription = new PrescriptionEntity();
             if (orderData.withPrescription == false) {
@@ -147,18 +171,18 @@ export class OrderService {
             prescription.customerName = addOrderDto.prescription.customerName;
             prescription.customerEmail = addOrderDto.prescription.customerEmail;
             prescription.customerPhone = addOrderDto.prescription.customerPhone;
+            const responsePrescription = await this.prescriptionRepository.save(prescription);
+            orderData.prescription = responsePrescription;
 
             orderData.orderItem = await Promise.all(addOrderDto.orderItem.map(async item => {
                 const orderItemData = new OrderItemsEntity();
                 orderItemData.product = new ProductEntity();
                 orderItemData.product.id = item.id;
-                orderItemData.qty = item.quantity;
+                orderItemData.qty = item.qty;
                 orderItemData.priceBeforeTax = item.priceBeforeTax;
                 orderItemData.tax = item.tax;
-                orderItemData.price = item.quantity * item.price;
+                orderItemData.price = item.qty * item.price;
 
-                // verify if the order was complete to prevent cancel order
-                // method to decrease product quantity when new order was created
                 const productData = await this.productRepository.findOne(item.id);
                 if (!productData) {
                     throw new Error('Product not found');
@@ -166,11 +190,13 @@ export class OrderService {
                 if (orderItemData.qty >= productData.quantity) {
                     throw new Error('Insufficient product quantity');
                 }
-                if (orderData.isComplete === true) {
-                    productData.quantity -= orderItemData.qty;
+                productData.quantity -= orderItemData.qty;
 
-                    await this.productRepository.save(productData);
-                }
+                // if (productData.quantity === 0) {
+                //     productData.status = ProductStatus.INACTIVE
+                // }
+
+                await this.productRepository.save(productData);
 
                 return orderItemData;
             }))
@@ -181,10 +207,6 @@ export class OrderService {
             console.log(orderData)
             // return null
             const newOrder = await this.orderRepository.save(orderData);
-            if (newOrder) {
-                const responsePrescription = await this.prescriptionRepository.save(prescription);
-                orderData.prescription = responsePrescription;
-            }
             return newOrder;
         } catch (error) {
             console.error(error)
@@ -192,9 +214,56 @@ export class OrderService {
         }
     }
 
-    async getOrderById(id: string): Promise<OrderEntity> {
-        const dataTransaction = await this.orderRepository.findOne(id);
-        return dataTransaction;
+    async getOrderById(id: string): Promise<OrderDataDto> {
+        const dataTransaction = await this.orderRepository.findOne({
+            where: { id },
+            relations: ['prescription', 'orderItem', 'orderItem.product', 'user', 'orderItem.product.category']
+        });
+        if (!dataTransaction) {
+            throw new NotFoundException("Transaction not found")
+        }
+
+        const orderDataDto = new OrderDataDto;
+        orderDataDto.id = dataTransaction.id;
+        orderDataDto.userId = dataTransaction.user.id;
+        orderDataDto.userName = dataTransaction.user.name;
+        orderDataDto.paymentMethod = dataTransaction.paymentMethod;
+        orderDataDto.status = dataTransaction.status;
+        orderDataDto.withPrescription = dataTransaction.withPrescription;
+        orderDataDto.prescription = {
+            customerName: dataTransaction.prescription.customerName,
+            customerPhone: dataTransaction.prescription.customerPhone,
+            customerEmail: dataTransaction.prescription.customerEmail,
+            right_sph: dataTransaction.prescription.right_sph,
+            right_cylinder: dataTransaction.prescription.right_cylinder,
+            right_axis: dataTransaction.prescription.right_axis,
+            right_add: dataTransaction.prescription.right_add,
+            right_pd: dataTransaction.prescription.right_pd,
+            left_sph: dataTransaction.prescription.left_sph,
+            left_cylinder: dataTransaction.prescription.left_cylinder,
+            left_axis: dataTransaction.prescription.left_axis,
+            left_add: dataTransaction.prescription.left_add,
+            left_pd: dataTransaction.prescription.left_pd,
+        }
+        if (dataTransaction.orderItem && dataTransaction.orderItem.length > 0) {
+            orderDataDto.orderItem = dataTransaction.orderItem.map(item => {
+                const productMeta = new ProductMeta();
+                productMeta.id = item.product.id;
+                productMeta.name = item.product.name;
+                productMeta.priceBeforeTax = item.priceBeforeTax;
+                productMeta.tax = item.tax;
+                productMeta.price = item.price;
+                productMeta.qty = item.qty;
+                productMeta.imageUrl = item.product.imageUrl;
+                productMeta.categoryName = item.product.category.name;
+                return productMeta;
+            })
+        }
+        orderDataDto.subTotal = dataTransaction.subTotal;
+        orderDataDto.tax = dataTransaction.tax;
+        orderDataDto.totalPrice = dataTransaction.totalPrice;
+
+        return orderDataDto;
     }
 
     async deleteOrder(id: string): Promise<any> {
@@ -208,29 +277,176 @@ export class OrderService {
     async updateOrder(id: string, updateOrderDto: UpdateOrderDto): Promise<OrderEntity> {
         const orderData = await this.orderRepository.findOne(
             id, {
-            relations: ['orderItem']
+            relations: ['orderItem', 'orderItem.product']
         });
         if (!orderData) {
             throw new NotFoundException("Order not found");
         }
+        console.log(orderData);
 
-        orderData.isComplete = updateOrderDto.isComplete;
-        if (updateOrderDto.isComplete === true) {
+        orderData.status = updateOrderDto.status;
+        if (updateOrderDto.status === "cancel") {
             const updateProductQuantity = orderData.orderItem.map(async orderItem => {
-                orderItem.product = new ProductEntity();
                 const productData = await this.productRepository.findOne(orderItem.product.id);
                 if (!productData) {
                     throw new Error("Product not found");
                 }
-                if (orderItem.qty >= productData.quantity) {
-                    throw new Error("Insufficient product quantity");
-                }
-                productData.quantity -= orderItem.qty;
+
+                productData.quantity += orderItem.qty;
                 await this.productRepository.save(productData);
             })
             await Promise.all(updateProductQuantity);
         }
 
         return await this.orderRepository.save(orderData);
+    }
+
+    async getBestSellerItems(limit: number): Promise<any> {
+        const bestSellerItems = await this.orderItemsRepository
+            .createQueryBuilder('orderItem')
+            .leftJoinAndSelect('orderItem.product', 'product')
+            .select('orderItem.productId, product.name, SUM(orderItem.qty) AS totalQty')
+            .groupBy('orderItem.productId, product.name')
+            .orderBy('totalQty', 'DESC')
+            .limit(limit)
+            .getRawMany()
+
+        return bestSellerItems;
+    }
+
+    async getTotalIncome(period: string): Promise<any[]> {
+        // try {
+        //     const startDate = new Date();
+        //     startDate.setDate(startDate.getDate() - 7);
+        //     startDate.setHours(0, 0, 0, 0)
+
+        //     const endDate = new Date();
+        //     let groupBy: string;
+
+        //     if (period === 'month') {
+        //         groupBy = 'DATE_FORMAT(transactionDate, "%Y-%m")';
+        //     } else if (period === 'year') {
+        //         groupBy = 'DATE_FORMAT(transactionDate, "%Y")';
+        //     } else {
+        //         groupBy = 'DATE_FORMAT(transactionDate, "%Y-%m-%d")';
+        //     }
+
+        //     const queryData =
+        //         this.orderRepository.createQueryBuilder('order')
+        //             .select(`SUM(order.totalPrice) AS totalIncome, ${groupBy} AS dateGroup`)
+        //             .where('order.transactionDate BETWEEN :startDate AND :endDate', { startDate, endDate })
+        //             // .andWhere('order.status = :status', { status: 'complete' })
+        //             .groupBy('dateGroup')
+        //             .orderBy('dateGroup', 'ASC');
+
+        //     const reports = await queryData.getRawMany();
+        //     return reports.map(report => ({
+        //         day: this.formatDate(report.dateGroup, 'day'),
+        //         month: this.formatDate(report.dateGroup, 'month'),
+        //         year: this.formatDate(report.dateGroup, 'year'),
+        //         sales: report.totalIncome,
+        //         dayName: this.getDayName(new Date(report.dateGroup).getDay()),
+        //         monthName: this.getMonthName(new Date(report.dateGroup).getMonth())
+        //     }))
+        // } catch (error) {
+        //     throw error;
+        // }
+
+        let startDate: Date;
+        let endDate: Date;
+        const currentDate = new Date();
+        const result: any[] = [];
+
+        switch (period) {
+            case 'week':
+                const currentDayOfWeek = currentDate.getDay();
+                const daysToSubtract = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+                startDate = new Date(currentDate.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
+                endDate = currentDate;
+
+                console.log(startDate)
+                console.log(endDate)
+                break;
+            case 'month':
+                startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+                break;
+            case 'year':
+                startDate = new Date(currentDate.getFullYear(), 0, 1);
+                endDate = new Date(currentDate.getFullYear() + 1, 0, 0)
+                break;
+            default:
+                startDate = new Date(0);
+                endDate = new Date(0)
+                break;
+        }
+
+        const totalIncomeData = await this.orderRepository
+            .createQueryBuilder('order')
+            .select('SUM(order.totalPrice) AS totalIncome, DATE(order.transactionDate) AS transactionDay, MONTH(order.transactionDate) AS transactionMonth')
+            .where('order.transactionDate >= :startDate', { startDate })
+            .groupBy('transactionDate, transactionMonth')
+            .orderBy('transactionDate', 'ASC')
+            .getRawMany();
+
+        const formattedData = totalIncomeData.map(incomeRecord => {
+            const formattedRecord: any = {};
+            if (period === 'week') {
+                formattedRecord.day = this.getDayName(new Date(incomeRecord.transactionDay).getDay());
+            } else if (period === 'month') {
+                formattedRecord.day = this.getDayName(new Date(incomeRecord.transactionDay).getDay());
+            }
+            else if (period === 'year') {
+                formattedRecord.month = this.getMonthName(incomeRecord.transactionMonth);
+            }
+            formattedRecord.totalIncome = incomeRecord.totalIncome;
+            return formattedRecord;
+        });
+
+        if (period === 'year') {
+            const monthlyData = Array.from({ length: 12 }, (_, index) => {
+                const monthNumber = index + 1;
+                const monthName = this.getMonthName(monthNumber);
+                const monthRecords = formattedData.filter(item => item.month === monthName);
+                const totalIncome = monthRecords.reduce((acc, cur) => acc + parseFloat(cur.totalIncome), 0);
+                return { month: monthName, totalIncome }
+            })
+            return monthlyData;
+        }
+
+        return formattedData;
+    }
+
+    private formatDate(dateString: string, format: 'day' | 'month' | 'year') {
+        const date = new Date(dateString);
+        switch (format) {
+            case 'day':
+                return `${date.getFullYear()}-${this.padZero(date.getMonth() + 1)}-${this.padZero(date.getDate())}`;
+            case 'month':
+                return `${date.getFullYear()}-${this.padZero(date.getMonth() + 1)}`;
+            case 'year':
+                return `${date.getFullYear()}`;
+            default:
+                return dateString;
+        }
+    }
+
+    private padZero(num: number) {
+        return num < 10 ? `0${num}` : num.toString();
+    }
+
+    getMonthName(month: number): string {
+        const monthName = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December'
+        ]
+        return monthName[month - 1];
+    }
+
+    getDayName(day: number): string {
+        const dayNames = [
+            'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
+        ];
+        return dayNames[day];
     }
 }

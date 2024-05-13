@@ -6,6 +6,7 @@ import { UserEntity } from "./user.entity";
 import { ProductEntity } from "./product.entity";
 import { PrescriptionEntity } from "./prescription.entity";
 import { OrderItemsEntity } from "./order-items.entity";
+import { OrderStatus } from "src/enums/order-status.enum";
 
 @Entity('orders')
 export class OrderEntity extends BaseEntity {
@@ -20,9 +21,9 @@ export class OrderEntity extends BaseEntity {
     totalItem: number;
 
     @Expose()
-    @Column({ default: false })
+    @Column({ type: 'enum', enum: OrderStatus, default: OrderStatus.ONGOING })
     @ApiProperty()
-    isComplete: boolean;
+    status: OrderStatus;
 
     @Expose()
     @Column()

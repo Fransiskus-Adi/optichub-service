@@ -10,7 +10,7 @@ export class products1710198174450 implements MigrationInterface {
                 priceBeforeTax integer NOT NULL,
                 tax integer NOT NULL,
                 price integer NOT NULL,
-                status boolean NOT NULL,
+                status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
                 quantity integer NOT NULL,
                 imageUrl varchar(255) NOT NULL,
                 categoryId varchar(36),

@@ -1,6 +1,8 @@
-import { IsBoolean, IsOptional } from "class-validator";
+import { IsBoolean, IsEnum, IsOptional } from "class-validator";
+import { OrderStatus } from "src/enums/order-status.enum";
 
 export class UpdateOrderDto {
-    @IsBoolean()
-    isComplete: boolean;
+    @IsEnum(OrderStatus)
+    @IsOptional()
+    status?: OrderStatus;
 }

@@ -1,27 +1,28 @@
-import { IsBoolean, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsEnum, IsOptional, IsString } from "class-validator";
+import { UserStatus } from "src/enums/user-status.enum";
 
 export class UpdateUserDto {
     @IsString()
     @IsOptional()
-    name: string;
+    name?: string;
 
     @IsString()
     @IsOptional()
-    email: string;
+    email?: string;
 
     @IsString()
     @IsOptional()
-    dob: string;
+    dob?: string;
 
-    @IsBoolean()
+    @IsEnum(UserStatus)
     @IsOptional()
-    status: boolean;
-
-    @IsString()
-    @IsOptional()
-    phone_number: string;
+    status?: UserStatus;
 
     @IsString()
     @IsOptional()
-    password: string;
+    phone_number?: string;
+
+    @IsString()
+    @IsOptional()
+    password?: string;
 }

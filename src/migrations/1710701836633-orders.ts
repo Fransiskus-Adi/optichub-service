@@ -11,7 +11,7 @@ export class orders1710701836633 implements MigrationInterface {
                 subTotal integer NOT NULL,
                 tax integer NOT NULL,
                 totalPrice integer NOT NULL,
-                isComplete boolean NOT NULL,
+                status ENUM('onGoing', 'complete', 'cancel') NOT NULL DEFAULT 'onGoing',
                 withPrescription boolean NOT NULL,
                 transactionDate datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
                 userId varchar(36),

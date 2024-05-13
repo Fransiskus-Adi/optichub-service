@@ -1,27 +1,36 @@
-import { IsBoolean, IsNumber, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
+import { ProductStatus } from "src/enums/product-status.enum";
 
 export class UpdateProductDto {
     @IsString()
     @IsOptional()
-    name: string;
-
-    @IsNumber()
-    @IsOptional()
-    price: number;
-
-    @IsBoolean()
-    @IsOptional()
-    status: boolean;
-
-    @IsNumber()
-    @IsOptional()
-    quantity: number;
+    name?: string;
 
     @IsString()
     @IsOptional()
-    imageUrl: string;
+    priceBeforeTax?: string;
 
     @IsString()
     @IsOptional()
-    categoryId: string;
+    tax?: string;
+
+    @IsString()
+    @IsOptional()
+    price?: string;
+
+    @IsEnum(ProductStatus)
+    @IsOptional()
+    status?: ProductStatus;
+
+    @IsString()
+    @IsOptional()
+    quantity?: string;
+
+    // @IsString()
+    // @IsOptional()
+    // imageUrl?: string;
+
+    @IsString()
+    @IsOptional()
+    categoryId?: string;
 }

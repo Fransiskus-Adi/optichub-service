@@ -1,5 +1,6 @@
 import { Expose, Type } from "class-transformer";
-import { IsBoolean, IsNumber, IsString, ValidateNested } from "class-validator";
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, ValidateNested } from "class-validator";
+import { OrderStatus } from "src/enums/order-status.enum";
 
 export class ProductMeta {
     @IsString()
@@ -15,7 +16,10 @@ export class ProductMeta {
     price: number;
 
     @IsNumber()
-    quantity: number;
+    qty: number;
+
+    // @IsString()
+    // categoryId: string;
 }
 
 export class PrescriptionData {
@@ -66,8 +70,9 @@ export class AddOrderDto {
     @IsString()
     paymentMethod: string;
 
-    @IsBoolean()
-    isComplete: boolean;
+    @IsEnum(OrderStatus)
+    @IsOptional()
+    status?: OrderStatus;
 
     @IsBoolean()
     withPrescription: boolean;

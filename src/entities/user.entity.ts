@@ -3,6 +3,7 @@ import { Expose } from "class-transformer";
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { BaseEntity } from "./base.entity";
 import { OrderEntity } from "./order.entity";
+import { UserStatus } from "src/enums/user-status.enum";
 
 @Entity('users')
 export class UserEntity extends BaseEntity {
@@ -21,10 +22,10 @@ export class UserEntity extends BaseEntity {
     @ApiProperty()
     email: string;
 
-    @Column({ default: true })
+    @Column({ type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE })
     @Expose()
     @ApiProperty()
-    status: boolean;
+    status: UserStatus;
 
     @Expose()
     @Column({ type: 'date' })

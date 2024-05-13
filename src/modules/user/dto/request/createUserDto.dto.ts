@@ -1,4 +1,5 @@
-import { IsBoolean, IsString } from "class-validator";
+import { IsEnum, IsOptional, IsString } from "class-validator";
+import { UserStatus } from "src/enums/user-status.enum";
 
 export class CreateUserDto {
     @IsString()
@@ -10,8 +11,9 @@ export class CreateUserDto {
     @IsString()
     dob: string;
 
-    @IsBoolean()
-    status: boolean;
+    @IsEnum(UserStatus)
+    @IsOptional()
+    status?: UserStatus;
 
     @IsString()
     phone_number: string;

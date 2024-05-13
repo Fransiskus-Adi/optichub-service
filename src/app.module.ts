@@ -15,6 +15,11 @@ import { PrescriptionEntity } from './entities/prescription.entity';
 import { OrderItemsEntity } from './entities/order-items.entity';
 import { AuthModule } from './modules/auth/auth.module';
 import { OrderModule } from './modules/order/order.module';
+import { MemoryStoredFile, NestjsFormDataModule } from 'nestjs-form-data';
+import { MulterModule } from '@nestjs/platform-express';
+import { multerConfig } from 'multer.config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 
 export function moduleFactory({
   host, password, username, port
@@ -48,6 +53,9 @@ export function moduleFactory({
       ConfigModule.forRoot({
         load: [configuration],
         isGlobal: true,
+      }),
+      MulterModule.register({
+        storage: multerConfig.storage
       }),
       TypeOrmModule.forRootAsync(dbConfig),
       ProductsModule,

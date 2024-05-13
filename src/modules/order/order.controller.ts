@@ -15,14 +15,32 @@ export class OrderController {
         @Query('page') page: number = 1,
         @Query('limit') limit: number = 10,
         @Query('userName') userName?: string,
-        @Query('customerName') customerName?: string
+        @Query('customerName') customerName?: string,
+        @Query('status') status?: string | '',
+        @Query('startDate') startDate?: Date,
+        @Query('endDate') endDate?: Date,
     ): Promise<{
         data: OrderDataDto[],
         metadata: {
             totalCount: number, currentPage: number, totalPages: number
         }
     }> {
-        return await this.orderService.getAllOrder(page, limit, userName, customerName);
+        //convert startDate and endDate from string to object
+        const startDateObj = startDate ? new Date(startDate) : undefined;
+        const endDateObj = endDate ? new Date(endDate) : undefined;
+        return await this.orderService.getAllOrder(page, limit, userName, customerName, status, startDateObj, endDateObj);
+    }
+
+    @Get('/best-seller')
+    async getBestSellerItems(): Promise<any> {
+        const limit = 10;
+        return this.orderService.getBestSellerItems(limit);
+    }
+
+    @Get('/total-income')
+    async getTotalIncome(@Query('period') period: string): Promise<any[]> {
+        const totalIncome = await this.orderService.getTotalIncome(period);
+        return totalIncome;
     }
 
     @Post('/')
@@ -31,8 +49,8 @@ export class OrderController {
         return await this.orderService.addOrder(addTrasactionDto);
     }
 
-    @Get('/search')
-    async getOrderById(@Query('id') id?: string): Promise<OrderEntity> {
+    @Get(':id')
+    async getOrderById(@Param('id') id: string): Promise<OrderDataDto> {
         return await this.orderService.getOrderById(id)
     }
 

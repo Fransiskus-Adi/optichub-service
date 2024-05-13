@@ -1,21 +1,20 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsBoolean, IsNumber, IsString } from "class-validator";
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
+import { ProductStatus } from "src/enums/product-status.enum";
 
 export class CreateProductDto {
     @IsString()
     name: string;
 
-    @IsNumber()
-    price: number;
+    @IsString()
+    price: string;
 
-    @IsBoolean()
-    status: boolean;
-
-    @IsNumber()
-    quantity: number;
+    @IsEnum(ProductStatus)
+    @IsOptional()
+    status?: ProductStatus;
 
     @IsString()
-    image_url: string;
+    quantity: string;
 
     @IsString()
     categoryId: string;

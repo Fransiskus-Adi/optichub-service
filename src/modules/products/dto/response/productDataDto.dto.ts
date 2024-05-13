@@ -23,8 +23,8 @@ export class ProductDataDto {
     price: number;
 
     @Expose()
-    @IsBoolean()
-    status: boolean;
+    @IsString()
+    status: string;
 
     @Expose()
     @IsNumber()

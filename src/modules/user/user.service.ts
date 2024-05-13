@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from 'src/entities/user.entity';
 import { Like, Repository } from 'typeorm';
@@ -8,6 +8,7 @@ import { UserDataDto } from './dto/response/UserDataDto.dto';
 import { UpdateUserDto } from './dto/request/updateUserDto.dto';
 // import { pagination } from '../pagination/pagination';
 import { plainToClass } from 'class-transformer';
+import { UserStatus } from 'src/enums/user-status.enum';
 
 @Injectable()
 export class UserService {
@@ -21,7 +22,7 @@ export class UserService {
     limit: number = 10,
     keyword?: string,
     role?: string,
-    status?: boolean,
+    status?: UserStatus | '',
   ): Promise<{
     data: UserDataDto[],
     metadata: {
@@ -38,7 +39,7 @@ export class UserService {
       whereCounditions.role = Like(`%${role}%`)
     }
 
-    if (status != undefined) {
+    if (status !== undefined && status !== null && status !== '') {
       whereCounditions.status = status;
     }
 
@@ -103,7 +104,7 @@ export class UserService {
       dob: parsedDob,
       phone_number,
       password: hashedPass,
-      status,
+      status: UserStatus.ACTIVE,
       role
     })
 
@@ -142,8 +143,13 @@ export class UserService {
       userData.phone_number = updateUserDto.phone_number;
     }
 
-    const parsedDob = new Date(updateUserDto.dob);
-    userData.dob = parsedDob;
+    if (updateUserDto.dob) {
+      const parsedDob = new Date(updateUserDto.dob);
+      if (isNaN(parsedDob.getTime())) {
+        throw new BadRequestException('Invalid date format for dob field!');
+      }
+      userData.dob = parsedDob;
+    }
 
     if (updateUserDto.password) {
       userData.password = await hash(updateUserDto.password, 10);
