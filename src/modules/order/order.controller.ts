@@ -14,8 +14,9 @@ export class OrderController {
     async getAllOrder(
         @Query('page') page: number = 1,
         @Query('limit') limit: number = 10,
-        @Query('userName') userName?: string,
-        @Query('customerName') customerName?: string,
+        // @Query('userName') userName?: string,
+        // @Query('customerName') customerName?: string,
+        @Query('keyword') keyword?: string,
         @Query('status') status?: string | '',
         @Query('startDate') startDate?: Date,
         @Query('endDate') endDate?: Date,
@@ -28,7 +29,7 @@ export class OrderController {
         //convert startDate and endDate from string to object
         const startDateObj = startDate ? new Date(startDate) : undefined;
         const endDateObj = endDate ? new Date(endDate) : undefined;
-        return await this.orderService.getAllOrder(page, limit, userName, customerName, status, startDateObj, endDateObj);
+        return await this.orderService.getAllOrder(page, limit, keyword, status, startDateObj, endDateObj);
     }
 
     @Get('/best-seller')

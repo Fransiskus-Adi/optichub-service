@@ -31,8 +31,7 @@ export class OrderService {
     async getAllOrder(
         page: number = 1,
         limit: number = 10,
-        userName?: string,
-        customerName?: string,
+        keyword?: string,
         status?: string | '',
         startDate?: Date,
         endDate?: Date,
@@ -45,29 +44,49 @@ export class OrderService {
 
         let whereConditions: any = {};
 
-        if (userName) {
-            whereConditions.user = whereConditions.user || {};
-            whereConditions.user.name = Like(`%${userName}%`)
+        if (keyword) {
+            whereConditions = [
+                { user: { name: Like(`%${keyword}%`) } },
+                { prescription: { customerName: Like(`%${keyword}%`) } }
+            ]
         }
-
-        if (customerName) {
-            whereConditions.customerName = Like(`%${customerName}%`)
-        }
-        // tambahin filter status order and filter start date & end date
 
         if (status !== undefined && status !== '') {
             whereConditions.status = status;
         }
 
-        if (startDate && endDate) {
-            // if both provided, filter between those date
-            whereConditions.transactionDate = Between(startDate, endDate);
-        } else if (startDate) {
-            // if only startDate provided, will filter from startDate
-            whereConditions.transactionDate = MoreThanOrEqual(startDate);
-        } else if (endDate) {
-            // if only endDate provided, will filter until endDate
-            whereConditions.transactionDate = LessThanOrEqual(endDate);
+        // check if start and end date was both provided, or only one
+        if (startDate || endDate) {
+
+            // hold the data based on the criteria
+            let dateCondition: any = {};
+
+            //if start date provided, filter transactionDate to start from or equal to startDate
+            if (startDate) {
+                dateCondition = { transactionDate: MoreThanOrEqual(startDate) };
+            }
+            if (endDate) {
+                const endOfDate = new Date(endDate)
+                // set to the very end of the day of endDate
+                endOfDate.setHours(23, 59, 59, 999)
+
+                // if startDate and endDate was provided,the thansactionDate was between
+                if (startDate) {
+                    dateCondition = { transactionDate: Between(startDate, endOfDate) }
+                } else {
+                    // only endDate provided, the transactionDate was filter less than or equal to endDate
+                    dateCondition = { transactionDate: LessThanOrEqual(endOfDate) };
+                }
+            }
+            if (Array.isArray(whereConditions)) {
+                //when whereConditions were array, combine the filtered data. when startDate and endDate was provided
+                whereConditions.forEach((condition: any) => {
+                    Object.assign(condition, dateCondition);
+                })
+            } else {
+                // if whereConditions above not an array, the data merged directly
+                Object.assign(whereConditions, dateCondition);
+            }
         }
 
         const [allTransaction, totalCount] = await this.orderRepository.findAndCount({
