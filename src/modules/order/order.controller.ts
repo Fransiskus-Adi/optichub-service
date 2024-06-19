@@ -1,11 +1,13 @@
-import { Body, ClassSerializerInterceptor, Controller, Delete, Get, Param, Patch, Post, Query, UseInterceptors } from "@nestjs/common";
+import { Body, ClassSerializerInterceptor, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards, UseInterceptors } from "@nestjs/common";
 import { OrderService } from "./order.service";
 import { AddOrderDto } from "./dto/request/addOrderDto.dto";
 import { OrderEntity } from "src/entities/order.entity";
 import { OrderDataDto } from "./dto/response/orderDataDto.dto";
 import { UpdateOrderDto } from "./dto/request/updateOrderDto.dto";
+import { AuthGuard } from "src/guards/auth.guard";
 
 // @UseInterceptors(ClassSerializerInterceptor)
+@UseGuards(AuthGuard)
 @Controller('order')
 export class OrderController {
     constructor(private readonly orderService: OrderService) { }
@@ -39,7 +41,7 @@ export class OrderController {
     }
 
     @Get('/total-income')
-    async getTotalIncome(@Query('period') period: string): Promise<any[]> {
+    async getTotalIncome(@Query('period') period?: string): Promise<any[] | { yearlyData: any[] }> {
         const totalIncome = await this.orderService.getTotalIncome(period);
         return totalIncome;
     }

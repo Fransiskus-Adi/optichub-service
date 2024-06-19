@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsBoolean, IsEnum, IsNumber, IsString, ValidateNested } from "class-validator";
+import { IsBoolean, IsDate, IsEnum, IsNumber, IsString, ValidateNested } from "class-validator";
 import { OrderStatus } from "src/enums/order-status.enum";
 
 export class ProductMeta {
@@ -104,4 +104,7 @@ export class OrderDataDto {
 
     @IsNumber()
     totalPrice: number;
+
+    @IsDate()
+    transactionDate: Date;
 }

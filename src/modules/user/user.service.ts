@@ -1,14 +1,15 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from 'src/entities/user.entity';
 import { Like, Repository } from 'typeorm';
 import { CreateUserDto } from './dto/request/createUserDto.dto';
-import { hash } from 'bcrypt'
+import { hash, compare } from 'bcrypt'
 import { UserDataDto } from './dto/response/UserDataDto.dto';
 import { UpdateUserDto } from './dto/request/updateUserDto.dto';
 // import { pagination } from '../pagination/pagination';
 import { plainToClass } from 'class-transformer';
 import { UserStatus } from 'src/enums/user-status.enum';
+import { ChangePassDto } from './dto/request/changePassDto.dto';
 
 @Injectable()
 export class UserService {
@@ -78,26 +79,51 @@ export class UserService {
       phone_number,
       password,
       status,
-      role
+      role,
+      nik
     } = createUserDto;
+
+    //Validate Existing Name
+    const validateUserName = await this.userRepository.findOne({ where: { name } })
+    if (validateUserName) {
+      throw new BadRequestException('Name already exist!')
+    }
 
     //Validate Existing Email
     const validateEmailExist = await this.userRepository.findOne({ where: { email } })
     if (validateEmailExist) {
-      throw new Error('Email already exist!');
+      throw new BadRequestException('Email already exist!');
     }
 
     //Validate Existing Phone_Number
     const validatePhoneNumber = await this.userRepository.findOne({ where: { phone_number } })
-    if (validatePhoneNumber) {
-      throw new Error('Phone number already exist!');
+    if (phone_number.charAt(0) !== '8') {
+      throw new BadRequestException("Phone Number Must Start From 8!")
+    }
+    else if (phone_number.length < 10 || phone_number.length > 12) {
+      throw new BadRequestException("Invalid phone number!")
+    }
+    else if (validatePhoneNumber) {
+      throw new BadRequestException('Phone number already exist!');
+    }
+
+    // Validate NIK
+    const validateNikNumber = await this.userRepository.findOne({ where: { nik } })
+    if (validateNikNumber) {
+      throw new BadRequestException('NIK number already exist');
+    }
+
+    if (nik.length > 16 || nik.length < 16) {
+      throw new BadRequestException("Invalid NIK");
     }
 
     // Parsed string to date
     const parsedDob = new Date(dob);
+
     // Hash input password
     const hashedPass = await hash(password, 10)
 
+    console.log('dto', createUserDto);
     const newUser = this.userRepository.create({
       name,
       email,
@@ -105,9 +131,9 @@ export class UserService {
       phone_number,
       password: hashedPass,
       status: UserStatus.ACTIVE,
-      role
+      role,
+      nik
     })
-
     return await this.userRepository.save(newUser);
   }
 
@@ -126,32 +152,56 @@ export class UserService {
       throw new NotFoundException('User was not found !');
     }
 
-    const validateName = await this.userRepository.findOne({ where: { email: updateUserDto.name } });
-    if (validateName) {
-      throw new Error('Name already exist!');
+    if (updateUserDto.name && updateUserDto.name !== userData.name) {
+      const validateName = await this.userRepository.findOne({ where: { name: updateUserDto.name } });
+      if (validateName) {
+        throw new BadRequestException('Name already exist!');
+      }
+      userData.name = updateUserDto.name;
     }
-    userData.name = updateUserDto.name;
 
-    const validateEmail = await this.userRepository.findOne({ where: { email: updateUserDto.email } });
-    if (!validateEmail) {
+    if (updateUserDto.email && updateUserDto.email !== userData.email) {
+      const validateEmail = await this.userRepository.findOne({ where: { email: updateUserDto.email } });
+      if (validateEmail) {
+        throw new BadRequestException('Email already exist!');
+      }
       userData.email = updateUserDto.email;
     }
-    userData.email = updateUserDto.email;
 
     const validatePhoneNumber = await this.userRepository.findOne({ where: { phone_number: updateUserDto.phone_number } });
-    if (!validatePhoneNumber) {
+    if (updateUserDto.phone_number && updateUserDto.phone_number !== userData.phone_number) {
+      if (updateUserDto.phone_number.length < 10 || updateUserDto.phone_number.length > 12) {
+        throw new BadRequestException("Invalid phone number!")
+      } else if (updateUserDto.phone_number.charAt(0) !== '8') {
+        throw new BadRequestException("Phone Must Number Start From 8!")
+      }
+      else if (validatePhoneNumber) {
+        throw new BadRequestException('Phone number already exist!');
+      }
       userData.phone_number = updateUserDto.phone_number;
+    }
+    const validateNikNumber = await this.userRepository.findOne({ where: { nik: updateUserDto.nik } })
+    if (updateUserDto.nik && updateUserDto.nik !== userData.nik) {
+      if (validateNikNumber) {
+        throw new BadRequestException('NIK number already exist');
+      }
+      if (updateUserDto.nik.length > 16 || updateUserDto.nik.length < 16) {
+        throw new BadRequestException("Invalid NIK");
+      }
+      userData.nik = updateUserDto.nik;
     }
 
     if (updateUserDto.dob) {
       const parsedDob = new Date(updateUserDto.dob);
-      if (isNaN(parsedDob.getTime())) {
-        throw new BadRequestException('Invalid date format for dob field!');
+      if (parsedDob !== userData.dob) {
+        if (isNaN(parsedDob.getTime())) {
+          throw new BadRequestException('Invalid date format for dob field!');
+        }
+        userData.dob = parsedDob;
       }
-      userData.dob = parsedDob;
     }
 
-    if (updateUserDto.password) {
+    if (updateUserDto.password && updateUserDto.password !== userData.password) {
       userData.password = await hash(updateUserDto.password, 10);
     }
     userData.status = updateUserDto.status;
@@ -159,4 +209,30 @@ export class UserService {
     return await this.userRepository.save(userData);
   }
 
+  async changePassword(id: string, changePassDto: ChangePassDto): Promise<UserDataDto> {
+    const userData = await this.userRepository.findOne(id)
+
+    if (!userData) {
+      throw new NotFoundException("User Not Found!")
+    }
+
+    if (!changePassDto.oldPassword) {
+      throw new BadRequestException("You Must Input Old Password")
+    }
+
+    const validateOldPassword = await compare(changePassDto.oldPassword, userData.password);
+    if (!validateOldPassword) {
+      throw new BadRequestException("Wrong Old Password")
+    }
+
+    if (!changePassDto.newPassword) {
+      throw new BadRequestException("You Must Input New Password")
+    }
+
+    if (changePassDto.newPassword) {
+      userData.password = await hash(changePassDto.newPassword, 10)
+    }
+
+    return await this.userRepository.save(userData);
+  }
 }

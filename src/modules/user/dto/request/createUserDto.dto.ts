@@ -23,4 +23,7 @@ export class CreateUserDto {
 
     @IsString()
     role: string;
+
+    @IsString()
+    nik: string;
 }

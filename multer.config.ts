@@ -12,7 +12,10 @@ export const multerConfig = {
             const extension = file.originalname.split('.').pop();
             callback(null, `${uniqueSuffix}.${extension}`)
         }
-    })
+    }),
+    limits: {
+        fileSize: 1 * 1024 * 1024
+    }
 }
 
 // Multer -> middleware method from nestjs for handling file uploads

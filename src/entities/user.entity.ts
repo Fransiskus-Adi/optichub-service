@@ -46,6 +46,11 @@ export class UserEntity extends BaseEntity {
     @ApiProperty()
     role: string;
 
+    @Expose()
+    @Column()
+    @ApiProperty()
+    nik: string;
+
     @OneToMany(() => OrderEntity, order => order.user)
     orders: OrderEntity[];
 }

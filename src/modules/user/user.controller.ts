@@ -1,17 +1,22 @@
-import { Controller, Get, Post, Body, HttpException, HttpStatus, Query, Delete, Param, Patch } from '@nestjs/common';
+import { Controller, Get, Post, Body, HttpException, HttpStatus, Query, Delete, Param, Patch, UseGuards, Req } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UserEntity } from 'src/entities/user.entity';
 import { CreateUserDto } from './dto/request/createUserDto.dto';
 import { UserDataDto } from './dto/response/UserDataDto.dto';
 import { UpdateUserDto } from './dto/request/updateUserDto.dto';
 import { UserStatus } from 'src/enums/user-status.enum';
+import { ChangePassDto } from './dto/request/changePassDto.dto';
+import { AuthGuard } from 'src/guards/auth.guard';
 
+
+@UseGuards(AuthGuard)
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
   @Get('/')
   async findAllUser(
+    @Req() req: Request,
     @Query('page') page: number = 1,
     @Query('limit') limit: number = 10,
     @Query('keyword') keyword?: string,
@@ -24,6 +29,9 @@ export class UserController {
     };
   }> {
     try {
+      const user = req['user'];
+      console.log('Authenticated User:', user);
+
       const response = await this.userService.findAllUser(page, limit, keyword, role, status)
       return {
         data: response.data,
@@ -63,4 +71,13 @@ export class UserController {
   async updateUser(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto): Promise<UserDataDto> {
     return await this.userService.updateUser(id, updateUserDto);
   }
+
+  @Patch('/change-password/:id')
+  async changePassword(@Param('id') id: string, @Body() changePassDto: ChangePassDto): Promise<UserDataDto> {
+    return await this.userService.changePassword(id, changePassDto);
+  }
 }
+function UserGuard(): (target: typeof UserController) => void | typeof UserController {
+  throw new Error('Function not implemented.');
+}
+

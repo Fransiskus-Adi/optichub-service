@@ -6,7 +6,10 @@ import { UpdateProductDto } from './dto/request/updateProductDto.dto';
 import { ProductDataDto } from './dto/response/productDataDto.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerConfig } from 'multer.config';
+import { ProductStockDto } from './dto/response/productStockDto.dto';
+import { AuthGuard } from 'src/guards/auth.guard';
 
+@UseGuards(AuthGuard)
 @Controller('products')
 export class ProductsController {
     constructor(private readonly productsService: ProductsService) { }
@@ -46,6 +49,11 @@ export class ProductsController {
             console.log(error);
             throw new HttpException(error.message || 'Internal server error', error.status || HttpStatus.INTERNAL_SERVER_ERROR)
         }
+    }
+
+    @Get('/stock')
+    async getProductStock(): Promise<ProductStockDto[]> {
+        return this.productsService.getProductStock();
     }
 
     @Get(':id')

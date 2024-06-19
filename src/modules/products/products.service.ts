@@ -1,4 +1,4 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, HttpException, HttpStatus, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ProductEntity } from 'src/entities/product.entity';
 import { Like, Repository } from 'typeorm';
@@ -7,46 +7,17 @@ import { CategoryEntity } from 'src/entities/category.entity';
 import { UpdateProductDto } from './dto/request/updateProductDto.dto';
 import { ProductDataDto } from './dto/response/productDataDto.dto';
 import { plainToClass } from 'class-transformer';
-import { ProductStatus } from 'src/enums/product-status.enum';
+import * as webpush from 'web-push';
+import { ProductStockDto } from './dto/response/productStockDto.dto';
+
 
 
 @Injectable()
 export class ProductsService {
     constructor(
         @InjectRepository(ProductEntity)
-        public readonly productRepository: Repository<ProductEntity>
+        public readonly productRepository: Repository<ProductEntity>,
     ) { }
-
-    // async uploadImage(imageFile: Express.Multer.File): Promise<string> {
-    //     try {
-    //         console.log('Received image file buffer:', imageFile.buffer);
-    //         if (!imageFile) {
-    //             throw new HttpException('No image was provided', HttpStatus.BAD_REQUEST);
-    //         }
-
-    //         // define the directory to store the image
-    //         const uploadDirectory = path.join(__dirname, '..', 'uploads');
-
-    //         // if the directory above doesnt exist, create the directory
-    //         if (!fs.existsSync(uploadDirectory)) {
-    //             fs.mkdirSync(uploadDirectory, { recursive: true });
-    //         }
-
-    //         // generate the file name to avoid name conflict
-    //         const uniqueFileName = `${Date.now()}-${imageFile.originalname}`;
-
-    //         // save the image to file directory
-    //         const filePath = path.join(uploadDirectory, uniqueFileName);
-    //         fs.writeFileSync(filePath, imageFile.buffer);
-
-    //         // return the image path
-    //         const fileUrl = `/uploads/${uniqueFileName}`;
-    //         return fileUrl;
-    //     } catch (error) {
-    //         console.log(error);
-    //         throw new HttpException('Failed to upload image', HttpStatus.INTERNAL_SERVER_ERROR)
-    //     }
-    // }
 
     async addProduct(
         createProductDto: CreateProductDto,
@@ -58,10 +29,18 @@ export class ProductsService {
             }
         })
         if (validateProductExist) {
-            throw new Error("Product already exists!");
+            throw new BadRequestException("Product already exists!");
         }
         const price = parseInt(createProductDto.price, 10);
         const quantity = parseInt(createProductDto.quantity, 10);
+
+        if (isNaN(price) || price <= 0 || price > 100000000) {
+            throw new BadRequestException("Invalid Price Value!, Minimum Value 0 & Maximum Value 99,999,999")
+        }
+
+        if (isNaN(quantity) || quantity <= 0 || quantity > 1000) {
+            throw new BadRequestException("Invalid Quantity Value!, Minimum Value 0 & Maximum Value 999")
+        }
         try {
             const newProduct = new ProductEntity()
             newProduct.name = createProductDto.name;
@@ -75,9 +54,8 @@ export class ProductsService {
 
             newProduct.imageUrl = imageFile;
             return await this.productRepository.save(newProduct);
-            // return null
         } catch (error) {
-            throw new Error("Failed to add new product");
+            throw new InternalServerErrorException("Failed to add new product");
         }
     }
 
@@ -121,7 +99,7 @@ export class ProductsService {
         const totalPages = Math.ceil(totalCount / limit)
         const transformedData = data.map(product => {
             const productDto = plainToClass(ProductDataDto, product);
-            const url = "http://localhost:3000/images/"
+            const url = `${process.env.IMAGE_URL}`
             productDto.imageUrl = url + product.imageUrl
             productDto.categoryId = product.category.id;
             return productDto;
@@ -152,7 +130,7 @@ export class ProductsService {
         productDataDto.price = product.price;
         productDataDto.status = product.status;
         productDataDto.quantity = product.quantity;
-        const url = "http://localhost:3000/images/"
+        const url = `${process.env.IMAGE_URL}`
         productDataDto.imageUrl = url + product.imageUrl;
         productDataDto.categoryId = product.category.id;
 
@@ -179,30 +157,63 @@ export class ProductsService {
 
         if (updateProductDto.price) {
             const price = parseInt(updateProductDto.price, 10);
-            productData.priceBeforeTax = Math.ceil(price / 1.11);
-            productData.tax = price - productData.priceBeforeTax;
-            productData.price = price;
+            if (price !== productData.price) {
+                if (isNaN(price) || price <= 0 || price > 100000000) {
+                    throw new BadRequestException("Invalid Price Value!, Minimum Value 0 & Maximum Value 99,999,999")
+                }
+                productData.priceBeforeTax = Math.ceil(price / 1.11);
+                productData.tax = price - productData.priceBeforeTax;
+                productData.price = price;
+            }
         }
         if (updateProductDto.quantity) {
             const quantity = parseInt(updateProductDto.quantity, 10);
-            productData.quantity = quantity;
+            if (quantity !== productData.quantity) {
+                if (isNaN(quantity) || quantity <= 0 || quantity > 1000) {
+                    throw new BadRequestException("Invalid Quantity Value!, Minimum Value 0 & Maximum Value 999")
+                }
+                productData.quantity = quantity;
+            }
         }
 
-        productData.name = updateProductDto.name;
-        // if (updateProductDto.status) {
-        //     productData.status = updateProductDto.status;
-        // } else if (productData.quantity === 0) {
-        //     productData.status = ProductStatus.INACTIVE;
-        // }
+        const validateProductExist = await this.productRepository.findOne({
+            where: {
+                name: updateProductDto.name
+            }
+        })
+        if (updateProductDto.name && updateProductDto.name !== productData.name) {
+            if (validateProductExist) {
+                throw new BadRequestException("Product already exists!");
+            }
+            productData.name = updateProductDto.name;
+        }
 
         productData.status = updateProductDto.status;
 
-        if (imageFile) {
+        if (imageFile && imageFile !== productData.imageUrl) {
             productData.imageUrl = imageFile;
         }
-        productData.category = new CategoryEntity()
-        productData.category.id = updateProductDto.categoryId;
+
+        if (updateProductDto.categoryId) {
+            productData.category = new CategoryEntity()
+            if (updateProductDto.categoryId !== productData.category.id) {
+                productData.category.id = updateProductDto.categoryId;
+            }
+        }
 
         return await this.productRepository.save(productData);
+    }
+
+    async getProductStock(): Promise<ProductStockDto[]> {
+        const productData = await this.productRepository.find();
+        const filteredData = productData
+            //to filter product that has quantity <= 5
+            .filter(product => product.quantity <= 5)
+            //to sort ascending
+            .sort((a, b) => a.quantity - b.quantity)
+        return filteredData.map(product => ({
+            name: product.name,
+            quantity: product.quantity,
+        }));
     }
 }

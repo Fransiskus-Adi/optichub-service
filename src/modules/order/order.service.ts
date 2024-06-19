@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { OrderEntity } from "src/entities/order.entity";
 import { Between, LessThanOrEqual, Like, MoreThanOrEqual, Raw, Repository, UpdateResult } from "typeorm";
@@ -7,13 +7,8 @@ import { PrescriptionEntity } from "src/entities/prescription.entity";
 import { OrderItemsEntity } from "src/entities/order-items.entity";
 import { ProductEntity } from "src/entities/product.entity";
 import { UserEntity } from "src/entities/user.entity";
-
 import { OrderDataDto, PrescriptionData, ProductMeta } from "./dto/response/orderDataDto.dto";
 import { UpdateOrderDto } from "./dto/request/updateOrderDto.dto";
-import { CategoryEntity } from "src/entities/category.entity";
-import { OrderStatus } from "src/enums/order-status.enum";
-import { ProductStatus } from "src/enums/product-status.enum";
-import moment from "moment";
 
 @Injectable()
 export class OrderService {
@@ -41,118 +36,124 @@ export class OrderService {
             totalCount: number, currentPage: number, totalPages: number
         }
     }> {
+        try {
+            let whereConditions: any = {};
 
-        let whereConditions: any = {};
-
-        if (keyword) {
-            whereConditions = [
-                { user: { name: Like(`%${keyword}%`) } },
-                { prescription: { customerName: Like(`%${keyword}%`) } }
-            ]
-        }
-
-        if (status !== undefined && status !== '') {
-            whereConditions.status = status;
-        }
-
-        // check if start and end date was both provided, or only one
-        if (startDate || endDate) {
-
-            // hold the data based on the criteria
-            let dateCondition: any = {};
-
-            //if start date provided, filter transactionDate to start from or equal to startDate
-            if (startDate) {
-                dateCondition = { transactionDate: MoreThanOrEqual(startDate) };
+            if (keyword) {
+                whereConditions = [
+                    { user: { name: Like(`%${keyword}%`) } },
+                    { prescription: { customerName: Like(`%${keyword}%`) } }
+                ]
             }
-            if (endDate) {
-                const endOfDate = new Date(endDate)
-                // set to the very end of the day of endDate
-                endOfDate.setHours(23, 59, 59, 999)
 
-                // if startDate and endDate was provided,the thansactionDate was between
+            if (status !== undefined && status !== '') {
+                whereConditions.status = status;
+            }
+
+            // check if start and end date was both provided, or only one
+            if (startDate || endDate) {
+
+                // hold the data based on the criteria
+                let dateCondition: any = {};
+
+                //if start date provided, filter transactionDate to start from or equal to startDate
                 if (startDate) {
-                    dateCondition = { transactionDate: Between(startDate, endOfDate) }
+                    dateCondition = { transactionDate: MoreThanOrEqual(startDate) };
+                }
+                if (endDate) {
+                    const endOfDate = new Date(endDate)
+                    // set to the very end of the day of endDate
+                    endOfDate.setHours(23, 59, 59, 999)
+
+                    // if startDate and endDate was provided,the thansactionDate was between
+                    if (startDate) {
+                        dateCondition = { transactionDate: Between(startDate, endOfDate) }
+                    } else {
+                        // only endDate provided, the transactionDate was filter less than or equal to endDate
+                        dateCondition = { transactionDate: LessThanOrEqual(endOfDate) };
+                    }
+                }
+                if (Array.isArray(whereConditions)) {
+                    //when whereConditions were array, combine the filtered data. when startDate and endDate was provided
+                    whereConditions.forEach((condition: any) => {
+                        Object.assign(condition, dateCondition);
+                    })
                 } else {
-                    // only endDate provided, the transactionDate was filter less than or equal to endDate
-                    dateCondition = { transactionDate: LessThanOrEqual(endOfDate) };
+                    // if whereConditions above not an array, the data merged directly
+                    Object.assign(whereConditions, dateCondition);
                 }
             }
-            if (Array.isArray(whereConditions)) {
-                //when whereConditions were array, combine the filtered data. when startDate and endDate was provided
-                whereConditions.forEach((condition: any) => {
-                    Object.assign(condition, dateCondition);
-                })
-            } else {
-                // if whereConditions above not an array, the data merged directly
-                Object.assign(whereConditions, dateCondition);
-            }
+
+            const [allTransaction, totalCount] = await this.orderRepository.findAndCount({
+                where: whereConditions,
+                relations: ['prescription', 'orderItem', 'orderItem.product', 'orderItem.product.category', 'user'],
+                take: limit,
+                skip: (page - 1) * limit,
+            });
+
+            const transactionDataDto: OrderDataDto[] = allTransaction.map(transaction => {
+                const transactionDto = new OrderDataDto();
+
+                // mapping transaction data
+                transactionDto.id = transaction.id;
+                transactionDto.transactionDate = transaction.transactionDate;
+                transactionDto.userId = transaction.user.id;
+                transactionDto.userName = transaction.user.name;
+                transactionDto.paymentMethod = transaction.paymentMethod;
+                transactionDto.status = transaction.status;
+                transactionDto.withPrescription = transaction.withPrescription;
+                // mapping prescription data
+                if (transaction.prescription) {
+                    const prescriptionData = new PrescriptionData();
+                    prescriptionData.customerName = transaction.prescription.customerName;
+                    prescriptionData.customerPhone = transaction.prescription.customerPhone;
+                    prescriptionData.customerEmail = transaction.prescription.customerEmail;
+                    prescriptionData.right_sph = transaction.prescription.right_sph;
+                    prescriptionData.right_cylinder = transaction.prescription.right_cylinder;
+                    prescriptionData.right_axis = transaction.prescription.right_axis;
+                    prescriptionData.right_add = transaction.prescription.right_add;
+                    prescriptionData.right_pd = transaction.prescription.right_pd;
+                    prescriptionData.left_sph = transaction.prescription.left_sph;
+                    prescriptionData.left_cylinder = transaction.prescription.left_cylinder;
+                    prescriptionData.left_axis = transaction.prescription.left_axis;
+                    prescriptionData.left_add = transaction.prescription.left_add;
+                    prescriptionData.left_pd = transaction.prescription.left_pd;
+                    transactionDto.prescription = prescriptionData;
+                }
+
+                // mapping order item data
+                if (transaction.orderItem && transaction.orderItem.length > 0) {
+                    transactionDto.orderItem = transaction.orderItem.map(item => {
+                        const productMeta = new ProductMeta();
+                        productMeta.id = item.product.id;
+                        productMeta.name = item.product.name;
+                        productMeta.priceBeforeTax = item.priceBeforeTax;
+                        productMeta.tax = item.tax;
+                        productMeta.price = item.price;
+                        productMeta.qty = item.qty;
+                        const url = `${process.env.IMAGE_URL}`
+                        productMeta.imageUrl = url + item.product.imageUrl;
+                        productMeta.categoryName = item.product.category.name;
+                        return productMeta;
+                    })
+                }
+                transactionDto.subTotal = transaction.subTotal;
+                transactionDto.tax = transaction.tax;
+                transactionDto.totalPrice = transaction.totalPrice;
+
+                return transactionDto;
+            })
+            const totalPages = Math.ceil(totalCount / limit)
+            return {
+                data: transactionDataDto,
+                metadata: {
+                    totalCount, currentPage: page, totalPages
+                }
+            };
+        } catch (error) {
+            console.error("Error fetching order:", error);
+            throw new InternalServerErrorException('An error occurred while fetching orders.');
         }
-
-        const [allTransaction, totalCount] = await this.orderRepository.findAndCount({
-            where: whereConditions,
-            relations: ['prescription', 'orderItem', 'orderItem.product', 'orderItem.product.category', 'user'],
-            take: limit,
-            skip: (page - 1) * limit,
-        });
-
-        const transactionDataDto: OrderDataDto[] = allTransaction.map(transaction => {
-            const transactionDto = new OrderDataDto();
-
-            // mapping transaction data
-            transactionDto.id = transaction.id;
-            transactionDto.userId = transaction.user.id;
-            transactionDto.userName = transaction.user.name;
-            transactionDto.paymentMethod = transaction.paymentMethod;
-            transactionDto.status = transaction.status;
-            transactionDto.withPrescription = transaction.withPrescription;
-            // mapping prescription data
-            if (transaction.prescription) {
-                const prescriptionData = new PrescriptionData();
-                prescriptionData.customerName = transaction.prescription.customerName;
-                prescriptionData.customerPhone = transaction.prescription.customerPhone;
-                prescriptionData.customerEmail = transaction.prescription.customerEmail;
-                prescriptionData.right_sph = transaction.prescription.right_sph;
-                prescriptionData.right_cylinder = transaction.prescription.right_cylinder;
-                prescriptionData.right_axis = transaction.prescription.right_axis;
-                prescriptionData.right_add = transaction.prescription.right_add;
-                prescriptionData.right_pd = transaction.prescription.right_pd;
-                prescriptionData.left_sph = transaction.prescription.left_sph;
-                prescriptionData.left_cylinder = transaction.prescription.left_cylinder;
-                prescriptionData.left_axis = transaction.prescription.left_axis;
-                prescriptionData.left_add = transaction.prescription.left_add;
-                prescriptionData.left_pd = transaction.prescription.left_pd;
-                transactionDto.prescription = prescriptionData;
-            }
-
-            // mapping order item data
-            if (transaction.orderItem && transaction.orderItem.length > 0) {
-                transactionDto.orderItem = transaction.orderItem.map(item => {
-                    const productMeta = new ProductMeta();
-                    productMeta.id = item.product.id;
-                    productMeta.name = item.product.name;
-                    productMeta.priceBeforeTax = item.priceBeforeTax;
-                    productMeta.tax = item.tax;
-                    productMeta.price = item.price;
-                    productMeta.qty = item.qty;
-                    productMeta.imageUrl = item.product.imageUrl;
-                    productMeta.categoryName = item.product.category.name;
-                    return productMeta;
-                })
-            }
-            transactionDto.subTotal = transaction.subTotal;
-            transactionDto.tax = transaction.tax;
-            transactionDto.totalPrice = transaction.totalPrice;
-
-            return transactionDto;
-        })
-        const totalPages = Math.ceil(totalCount / limit)
-        return {
-            data: transactionDataDto,
-            metadata: {
-                totalCount, currentPage: page, totalPages
-            }
-        };
     }
 
     async addOrder(addOrderDto: AddOrderDto): Promise<OrderEntity> {
@@ -204,16 +205,12 @@ export class OrderService {
 
                 const productData = await this.productRepository.findOne(item.id);
                 if (!productData) {
-                    throw new Error('Product not found');
+                    throw new BadRequestException('Product not found');
                 }
-                if (orderItemData.qty >= productData.quantity) {
-                    throw new Error('Insufficient product quantity');
+                if (orderItemData.qty > productData.quantity) {
+                    throw new BadRequestException('Insufficient product quantity');
                 }
                 productData.quantity -= orderItemData.qty;
-
-                // if (productData.quantity === 0) {
-                //     productData.status = ProductStatus.INACTIVE
-                // }
 
                 await this.productRepository.save(productData);
 
@@ -229,7 +226,7 @@ export class OrderService {
             return newOrder;
         } catch (error) {
             console.error(error)
-            throw new Error("Failed to create order");
+            throw new InternalServerErrorException("Failed to create order");
         }
     }
 
@@ -242,8 +239,9 @@ export class OrderService {
             throw new NotFoundException("Transaction not found")
         }
 
-        const orderDataDto = new OrderDataDto;
+        const orderDataDto = new OrderDataDto();
         orderDataDto.id = dataTransaction.id;
+        orderDataDto.transactionDate = dataTransaction.transactionDate;
         orderDataDto.userId = dataTransaction.user.id;
         orderDataDto.userName = dataTransaction.user.name;
         orderDataDto.paymentMethod = dataTransaction.paymentMethod;
@@ -273,7 +271,8 @@ export class OrderService {
                 productMeta.tax = item.tax;
                 productMeta.price = item.price;
                 productMeta.qty = item.qty;
-                productMeta.imageUrl = item.product.imageUrl;
+                const url = `${process.env.IMAGE_URL}`
+                productMeta.imageUrl = url + item.product.imageUrl;
                 productMeta.categoryName = item.product.category.name;
                 return productMeta;
             })
@@ -308,7 +307,7 @@ export class OrderService {
             const updateProductQuantity = orderData.orderItem.map(async orderItem => {
                 const productData = await this.productRepository.findOne(orderItem.product.id);
                 if (!productData) {
-                    throw new Error("Product not found");
+                    throw new NotFoundException("Product not found");
                 }
 
                 productData.quantity += orderItem.qty;
@@ -333,65 +332,25 @@ export class OrderService {
         return bestSellerItems;
     }
 
-    async getTotalIncome(period: string): Promise<any[]> {
-        // try {
-        //     const startDate = new Date();
-        //     startDate.setDate(startDate.getDate() - 7);
-        //     startDate.setHours(0, 0, 0, 0)
-
-        //     const endDate = new Date();
-        //     let groupBy: string;
-
-        //     if (period === 'month') {
-        //         groupBy = 'DATE_FORMAT(transactionDate, "%Y-%m")';
-        //     } else if (period === 'year') {
-        //         groupBy = 'DATE_FORMAT(transactionDate, "%Y")';
-        //     } else {
-        //         groupBy = 'DATE_FORMAT(transactionDate, "%Y-%m-%d")';
-        //     }
-
-        //     const queryData =
-        //         this.orderRepository.createQueryBuilder('order')
-        //             .select(`SUM(order.totalPrice) AS totalIncome, ${groupBy} AS dateGroup`)
-        //             .where('order.transactionDate BETWEEN :startDate AND :endDate', { startDate, endDate })
-        //             // .andWhere('order.status = :status', { status: 'complete' })
-        //             .groupBy('dateGroup')
-        //             .orderBy('dateGroup', 'ASC');
-
-        //     const reports = await queryData.getRawMany();
-        //     return reports.map(report => ({
-        //         day: this.formatDate(report.dateGroup, 'day'),
-        //         month: this.formatDate(report.dateGroup, 'month'),
-        //         year: this.formatDate(report.dateGroup, 'year'),
-        //         sales: report.totalIncome,
-        //         dayName: this.getDayName(new Date(report.dateGroup).getDay()),
-        //         monthName: this.getMonthName(new Date(report.dateGroup).getMonth())
-        //     }))
-        // } catch (error) {
-        //     throw error;
-        // }
-
+    async getTotalIncome(period?: string | ''): Promise<any[] | { yearlyData: any[] }> {
         let startDate: Date;
         let endDate: Date;
         const currentDate = new Date();
         const result: any[] = [];
 
         switch (period) {
-            case 'week':
-                const currentDayOfWeek = currentDate.getDay();
-                const daysToSubtract = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
-                startDate = new Date(currentDate.getTime() - daysToSubtract * 24 * 60 * 60 * 1000);
+            case '':
+                startDate = new Date(currentDate.getTime() - 6 * 24 * 60 * 60 * 1000);
                 endDate = currentDate;
-
-                console.log(startDate)
-                console.log(endDate)
                 break;
             case 'month':
-                startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-                endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+                // startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+                // endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+                startDate = new Date(currentDate.getFullYear(), 0, 1);
+                endDate = new Date(currentDate.getFullYear() + 1, 0, 0)
                 break;
             case 'year':
-                startDate = new Date(currentDate.getFullYear(), 0, 1);
+                startDate = new Date(0);
                 endDate = new Date(currentDate.getFullYear() + 1, 0, 0)
                 break;
             default:
@@ -402,15 +361,15 @@ export class OrderService {
 
         const totalIncomeData = await this.orderRepository
             .createQueryBuilder('order')
-            .select('SUM(order.totalPrice) AS totalIncome, DATE(order.transactionDate) AS transactionDay, MONTH(order.transactionDate) AS transactionMonth')
-            .where('order.transactionDate >= :startDate', { startDate })
-            .groupBy('transactionDate, transactionMonth')
+            .select('SUM(order.totalPrice) AS totalIncome, DATE(order.transactionDate) AS transactionDay, MONTH(order.transactionDate) AS transactionMonth, YEAR(order.transactionDate) AS transactionYear')
+            .where('order.transactionDate >= :startDate AND order.transactionDate <= :endDate', { startDate, endDate })
+            .groupBy('transactionDate, transactionMonth, transactionYear')
             .orderBy('transactionDate', 'ASC')
             .getRawMany();
 
         const formattedData = totalIncomeData.map(incomeRecord => {
             const formattedRecord: any = {};
-            if (period === 'week') {
+            if (period === '') {
                 formattedRecord.day = this.getDayName(new Date(incomeRecord.transactionDay).getDay());
             } else if (period === 'month') {
                 formattedRecord.day = this.getDayName(new Date(incomeRecord.transactionDay).getDay());
@@ -422,36 +381,49 @@ export class OrderService {
             return formattedRecord;
         });
 
-        if (period === 'year') {
+        if (period === '') {
+            const dailyData = Array.from({ length: 7 }, (_, index) => {
+                const date = new Date(currentDate.getTime() - (6 - index) * 24 * 60 * 60 * 1000);
+                const dayName = this.getDayName(date.getDay())
+                const dayRecords = formattedData.filter(item => item.day === dayName);
+                const totalIncome = dayRecords.reduce((acc, curr) => acc + parseFloat(curr.totalIncome), 0);
+                return { dayName, totalIncome }
+            })
+            return dailyData;
+        }
+
+        if (period === 'month') {
             const monthlyData = Array.from({ length: 12 }, (_, index) => {
                 const monthNumber = index + 1;
                 const monthName = this.getMonthName(monthNumber);
-                const monthRecords = formattedData.filter(item => item.month === monthName);
+                const monthRecords = totalIncomeData.filter(item => item.transactionMonth === monthNumber);
                 const totalIncome = monthRecords.reduce((acc, cur) => acc + parseFloat(cur.totalIncome), 0);
-                return { month: monthName, totalIncome }
-            })
+                return { month: monthName, totalIncome };
+            });
             return monthlyData;
         }
 
-        return formattedData;
-    }
+        if (period === 'year') {
+            const yearlyData = totalIncomeData.reduce((acc, cur) => {
+                const year = cur.transactionYear;
+                if (!acc[year]) {
+                    acc[year] = 0;
+                }
+                acc[year] += parseFloat(cur.totalIncome);
+                return acc;
+            }, {});
 
-    private formatDate(dateString: string, format: 'day' | 'month' | 'year') {
-        const date = new Date(dateString);
-        switch (format) {
-            case 'day':
-                return `${date.getFullYear()}-${this.padZero(date.getMonth() + 1)}-${this.padZero(date.getDate())}`;
-            case 'month':
-                return `${date.getFullYear()}-${this.padZero(date.getMonth() + 1)}`;
-            case 'year':
-                return `${date.getFullYear()}`;
-            default:
-                return dateString;
+            const accumulatedYearlyData = Object.entries(yearlyData).map(([year, totalIncome]) => ({
+                year,
+                totalIncome
+            }));
+
+            return {
+                yearlyData: accumulatedYearlyData
+            };
         }
-    }
 
-    private padZero(num: number) {
-        return num < 10 ? `0${num}` : num.toString();
+        return formattedData;
     }
 
     getMonthName(month: number): string {

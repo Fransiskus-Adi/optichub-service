@@ -13,6 +13,7 @@ export class user1710678333669 implements MigrationInterface {
                 phone_number varchar(18) NOT NULL,
                 password varchar(255) NOT NULL,
                 role varchar(16) NOT NULL,
+                nik varchar(18) NOT NULL,
                 createdAt datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
                 deletedAt datetime(6) NULL,
                 updatedAt datetime(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6)
