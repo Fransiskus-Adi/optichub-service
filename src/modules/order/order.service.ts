@@ -156,6 +156,90 @@ export class OrderService {
         }
     }
 
+    async exportOrderToExcel(
+        startDate?: Date,
+        endDate?: Date,
+    ): Promise<any[]> {
+
+        let whereConditions: any = {};
+
+        // check if start and end date was both provided, or only one
+        if (startDate || endDate) {
+
+            // hold the data based on the criteria
+            let dateCondition: any = {};
+
+            //if start date provided, filter transactionDate to start from or equal to startDate
+            if (startDate) {
+                dateCondition = { transactionDate: MoreThanOrEqual(startDate) };
+            }
+            if (endDate) {
+                const endOfDate = new Date(endDate)
+                // set to the very end of the day of endDate
+                endOfDate.setHours(23, 59, 59, 999)
+
+                // if startDate and endDate was provided,the thansactionDate was between
+                if (startDate) {
+                    dateCondition = { transactionDate: Between(startDate, endOfDate) }
+                } else {
+                    // only endDate provided, the transactionDate was filter less than or equal to endDate
+                    dateCondition = { transactionDate: LessThanOrEqual(endOfDate) };
+                }
+            }
+            if (Array.isArray(whereConditions)) {
+                //when whereConditions were array, combine the filtered data. when startDate and endDate was provided
+                whereConditions.forEach((condition: any) => {
+                    Object.assign(condition, dateCondition);
+                })
+            } else {
+                // if whereConditions above not an array, the data merged directly
+                Object.assign(whereConditions, dateCondition);
+            }
+        }
+        const orderList = await this.orderRepository.find({
+            where: whereConditions,
+            relations: ['prescription', 'orderItem', 'orderItem.product', 'orderItem.product.category', 'user']
+        })
+
+        return orderList.map(order => ({
+            id: order.id,
+            transactionDate: order.transactionDate,
+            userId: order.user.id,
+            userName: order.user.name,
+            paymentMethod: order.paymentMethod,
+            status: order.status,
+            withPrescription: order.withPrescription,
+            prescription: {
+                customerName: order.prescription.customerName,
+                customerPhone: order.prescription.customerPhone,
+                customerEmail: order.prescription.customerEmail,
+                right_sph: order.prescription.right_sph,
+                right_cylinder: order.prescription.right_cylinder,
+                right_axis: order.prescription.right_axis,
+                right_add: order.prescription.right_add,
+                right_pd: order.prescription.right_pd,
+                left_sph: order.prescription.left_sph,
+                left_cylinder: order.prescription.left_cylinder,
+                left_axis: order.prescription.left_axis,
+                left_add: order.prescription.left_add,
+                left_pd: order.prescription.left_pd,
+            },
+            orderItems: order.orderItem.map(orderItem => ({
+                id: orderItem.id,
+                name: orderItem.product.name,
+                priceBeforeTax: orderItem.priceBeforeTax,
+                tax: orderItem.tax,
+                price: orderItem.price,
+                qty: orderItem.qty,
+                imageUrl: orderItem.product.imageUrl,
+                categoryName: orderItem.product.category.name
+            })),
+            subTotal: order.subTotal,
+            tax: order.tax,
+            totalPrice: order.totalPrice,
+        }))
+    }
+
     async addOrder(addOrderDto: AddOrderDto): Promise<OrderEntity> {
         try {
             const orderData = new OrderEntity();
@@ -440,4 +524,5 @@ export class OrderService {
         ];
         return dayNames[day];
     }
+
 }

@@ -206,6 +206,9 @@ export class UserService {
     }
     userData.status = updateUserDto.status;
 
+    userData.role = updateUserDto.role;
+
+    console.log(userData)
     return await this.userRepository.save(userData);
   }
 

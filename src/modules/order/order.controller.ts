@@ -16,8 +16,6 @@ export class OrderController {
     async getAllOrder(
         @Query('page') page: number = 1,
         @Query('limit') limit: number = 10,
-        // @Query('userName') userName?: string,
-        // @Query('customerName') customerName?: string,
         @Query('keyword') keyword?: string,
         @Query('status') status?: string | '',
         @Query('startDate') startDate?: Date,
@@ -32,6 +30,16 @@ export class OrderController {
         const startDateObj = startDate ? new Date(startDate) : undefined;
         const endDateObj = endDate ? new Date(endDate) : undefined;
         return await this.orderService.getAllOrder(page, limit, keyword, status, startDateObj, endDateObj);
+    }
+
+    @Get('/export')
+    async exportToExcel(
+        @Query('startDate') startDate?: Date,
+        @Query('endDate') endDate?: Date,
+    ) {
+        const startDateObj = startDate ? new Date(startDate) : undefined;
+        const endDateObj = endDate ? new Date(endDate) : undefined;
+        return await this.orderService.exportOrderToExcel(startDateObj, endDateObj);
     }
 
     @Get('/best-seller')
